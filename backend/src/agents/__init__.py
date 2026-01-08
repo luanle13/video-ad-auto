@@ -7,6 +7,11 @@ from src.agents.base import (
     get_anthropic_client,
 )
 from src.agents.handler import handler
+from src.agents.market_insight import (
+    MarketInsightAgent,
+    MarketInsightInput,
+    MarketInsightOutput,
+)
 from src.agents.product_analyzer import (
     ProductAnalyzerAgent,
     ProductAnalyzerInput,
@@ -41,6 +46,10 @@ __all__ = [
     # Lambda handler
     "handler",
     "agent_handler",
+    # Market Insight
+    "MarketInsightAgent",
+    "MarketInsightInput",
+    "MarketInsightOutput",
     # Product Analyzer
     "ProductAnalyzerAgent",
     "ProductAnalyzerInput",
