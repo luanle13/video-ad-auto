@@ -11,6 +11,11 @@ from src.agents.product_analyzer import (
     ProductAnalyzerInput,
     ProductAnalyzerOutput,
 )
+from src.agents.script_generator import (
+    ScriptGeneratorAgent,
+    ScriptGeneratorInput,
+    ScriptGeneratorOutput,
+)
 
 __all__ = [
     "AgentError",
@@ -21,4 +26,7 @@ __all__ = [
     "ProductAnalyzerAgent",
     "ProductAnalyzerInput",
     "ProductAnalyzerOutput",
+    "ScriptGeneratorAgent",
+    "ScriptGeneratorInput",
+    "ScriptGeneratorOutput",
 ]
