@@ -1,5 +1,6 @@
 """Client utilities for external API integrations."""
 from src.workers.clients.base import BaseAPIClient
+from src.workers.clients.elevenlabs import ElevenLabsClient
 from src.workers.clients.elevenlabs_models import (
     ElevenLabsVoice,
     TTSRequest,
@@ -13,6 +14,8 @@ __all__ = [
     "BaseAPIClient",
     # Retry configuration
     "RetryConfig",
+    # ElevenLabs client
+    "ElevenLabsClient",
     # ElevenLabs models
     "ElevenLabsVoice",
     "VoiceSettings",
