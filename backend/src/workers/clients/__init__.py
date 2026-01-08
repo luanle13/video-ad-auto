@@ -7,6 +7,7 @@ from src.workers.clients.elevenlabs_models import (
     TTSResponse,
     VoiceSettings,
 )
+from src.workers.clients.polly import PollyClient, get_polly_client
 from src.workers.clients.polly_models import (
     PollyEngine,
     PollyTTSResponse,
@@ -26,6 +27,9 @@ __all__ = [
     "VoiceSettings",
     "TTSRequest",
     "TTSResponse",
+    # Polly client
+    "PollyClient",
+    "get_polly_client",
     # Polly models
     "PollyVoice",
     "PollyEngine",

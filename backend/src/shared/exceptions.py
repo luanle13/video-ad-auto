@@ -133,9 +133,16 @@ class KlingError(ExternalServiceError):
 
 class ElevenLabsError(ExternalServiceError):
     """ElevenLabs API error."""
-    
+
     def __init__(self, message: str) -> None:
         super().__init__("ElevenLabs", message)
+
+
+class PollyError(ExternalServiceError):
+    """AWS Polly error."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__("Polly", message)
 
 
 # === Job/Processing Errors ===
