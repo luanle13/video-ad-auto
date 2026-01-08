@@ -1,4 +1,5 @@
 """Base HTTP client for external API integrations."""
+import asyncio
 from abc import ABC, abstractmethod
 from typing import Any
 
@@ -159,3 +160,191 @@ class BaseAPIClient(ABC):
             exc_tb: Exception traceback if an error occurred
         """
         await self.close()
+
+    async def _request_with_retry(
+        self,
+        method: str,
+        endpoint: str,
+        **kwargs: Any,
+    ) -> httpx.Response:
+        """Make HTTP request with automatic retry on failures.
+
+        Retries on:
+        - Timeout exceptions
+        - HTTP status codes in retryable_status_codes
+        - Network errors
+
+        Uses exponential backoff between retries.
+
+        Args:
+            method: HTTP method (GET, POST, etc.)
+            endpoint: API endpoint (relative to base_url)
+            **kwargs: Additional arguments for httpx request
+
+        Returns:
+            httpx.Response object
+
+        Raises:
+            ExternalServiceError: If all retries fail
+        """
+        client = await self._get_client()
+        last_exception: Exception | None = None
+
+        for attempt in range(self._retry_config.max_retries + 1):
+            try:
+                logger.info(
+                    "api_request_attempt",
+                    service=self.service_name,
+                    method=method,
+                    endpoint=endpoint,
+                    attempt=attempt + 1,
+                    max_attempts=self._retry_config.max_retries + 1,
+                )
+
+                # Make the request
+                response = await client.request(method, endpoint, **kwargs)
+
+                # Check if status code is retryable
+                if response.status_code in self._retry_config.retryable_status_codes:
+                    logger.warning(
+                        "api_request_retryable_status",
+                        service=self.service_name,
+                        status_code=response.status_code,
+                        attempt=attempt + 1,
+                    )
+
+                    # If we haven't exhausted retries, wait and retry
+                    if attempt < self._retry_config.max_retries:
+                        delay = self._retry_config.calculate_delay(attempt + 1)
+                        logger.info(
+                            "api_request_retry_delay",
+                            service=self.service_name,
+                            delay_seconds=delay,
+                        )
+                        await asyncio.sleep(delay)
+                        continue
+
+                    # If we've exhausted retries, raise
+                    response.raise_for_status()
+
+                # Success - log and return
+                logger.info(
+                    "api_request_success",
+                    service=self.service_name,
+                    method=method,
+                    endpoint=endpoint,
+                    status_code=response.status_code,
+                    attempt=attempt + 1,
+                )
+                return response
+
+            except httpx.TimeoutException as e:
+                logger.warning(
+                    "api_request_timeout",
+                    service=self.service_name,
+                    attempt=attempt + 1,
+                    error=str(e),
+                )
+                last_exception = e
+
+                # Retry if we haven't exhausted attempts
+                if attempt < self._retry_config.max_retries:
+                    delay = self._retry_config.calculate_delay(attempt + 1)
+                    logger.info(
+                        "api_request_retry_after_timeout",
+                        service=self.service_name,
+                        delay_seconds=delay,
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+            except httpx.HTTPStatusError as e:
+                logger.warning(
+                    "api_request_http_error",
+                    service=self.service_name,
+                    status_code=e.response.status_code,
+                    attempt=attempt + 1,
+                )
+                last_exception = e
+
+                # Check if status code is retryable
+                if e.response.status_code in self._retry_config.retryable_status_codes:
+                    if attempt < self._retry_config.max_retries:
+                        delay = self._retry_config.calculate_delay(attempt + 1)
+                        await asyncio.sleep(delay)
+                        continue
+
+                # Non-retryable status code - fail immediately
+                break
+
+            except (httpx.NetworkError, httpx.ConnectError) as e:
+                logger.warning(
+                    "api_request_network_error",
+                    service=self.service_name,
+                    attempt=attempt + 1,
+                    error=str(e),
+                )
+                last_exception = e
+
+                # Retry on network errors
+                if attempt < self._retry_config.max_retries:
+                    delay = self._retry_config.calculate_delay(attempt + 1)
+                    await asyncio.sleep(delay)
+                    continue
+
+            except Exception as e:
+                logger.error(
+                    "api_request_unexpected_error",
+                    service=self.service_name,
+                    error=str(e),
+                    error_type=type(e).__name__,
+                )
+                last_exception = e
+                break
+
+        # All retries exhausted or non-retryable error
+        logger.error(
+            "api_request_failed",
+            service=self.service_name,
+            method=method,
+            endpoint=endpoint,
+            attempts=attempt + 1,
+        )
+
+        # Wrap and raise the last exception
+        if last_exception is not None:
+            raise self._wrap_exception(last_exception)
+        else:
+            raise self._wrap_exception(
+                Exception(f"Request failed after {attempt + 1} attempts")
+            )
+
+    async def get(self, endpoint: str, **kwargs: Any) -> httpx.Response:
+        """Make GET request with retry logic.
+
+        Args:
+            endpoint: API endpoint (relative to base_url)
+            **kwargs: Additional arguments for httpx request
+
+        Returns:
+            httpx.Response object
+
+        Raises:
+            ExternalServiceError: If request fails after retries
+        """
+        return await self._request_with_retry("GET", endpoint, **kwargs)
+
+    async def post(self, endpoint: str, **kwargs: Any) -> httpx.Response:
+        """Make POST request with retry logic.
+
+        Args:
+            endpoint: API endpoint (relative to base_url)
+            **kwargs: Additional arguments for httpx request
+
+        Returns:
+            httpx.Response object
+
+        Raises:
+            ExternalServiceError: If request fails after retries
+        """
+        return await self._request_with_retry("POST", endpoint, **kwargs)
