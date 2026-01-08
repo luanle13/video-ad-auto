@@ -1,4 +1,4 @@
-"""CrewAI agents for video generation pipeline."""
+"""AI Agents for video content generation."""
 from src.agents.base import (
     AgentError,
     AgentInput,
@@ -6,6 +6,7 @@ from src.agents.base import (
     BaseAgent,
     get_anthropic_client,
 )
+from src.agents.handler import handler
 from src.agents.product_analyzer import (
     ProductAnalyzerAgent,
     ProductAnalyzerInput,
@@ -27,21 +28,32 @@ from src.agents.script_reviewer import (
     ScriptReviewerOutput,
 )
 
+# Alias for backward compatibility and consistency
+agent_handler = handler
+
 __all__ = [
+    # Base classes
     "AgentError",
     "AgentInput",
     "AgentOutput",
     "BaseAgent",
     "get_anthropic_client",
+    # Lambda handler
+    "handler",
+    "agent_handler",
+    # Product Analyzer
     "ProductAnalyzerAgent",
     "ProductAnalyzerInput",
     "ProductAnalyzerOutput",
+    # Script Generator
     "ScriptGeneratorAgent",
     "ScriptGeneratorInput",
     "ScriptGeneratorOutput",
+    # Script Optimizer
     "ScriptOptimizerAgent",
     "ScriptOptimizerInput",
     "ScriptOptimizerOutput",
+    # Script Reviewer
     "ScriptReviewerAgent",
     "ScriptReviewerInput",
     "ScriptReviewerOutput",
