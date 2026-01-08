@@ -21,6 +21,11 @@ from src.agents.script_optimizer import (
     ScriptOptimizerInput,
     ScriptOptimizerOutput,
 )
+from src.agents.script_reviewer import (
+    ScriptReviewerAgent,
+    ScriptReviewerInput,
+    ScriptReviewerOutput,
+)
 
 __all__ = [
     "AgentError",
@@ -37,4 +42,7 @@ __all__ = [
     "ScriptOptimizerAgent",
     "ScriptOptimizerInput",
     "ScriptOptimizerOutput",
+    "ScriptReviewerAgent",
+    "ScriptReviewerInput",
+    "ScriptReviewerOutput",
 ]
