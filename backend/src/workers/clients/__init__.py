@@ -7,6 +7,11 @@ from src.workers.clients.elevenlabs_models import (
     TTSResponse,
     VoiceSettings,
 )
+from src.workers.clients.polly_models import (
+    PollyEngine,
+    PollyTTSResponse,
+    PollyVoice,
+)
 from src.workers.clients.retry import RetryConfig
 
 __all__ = [
@@ -21,4 +26,8 @@ __all__ = [
     "VoiceSettings",
     "TTSRequest",
     "TTSResponse",
+    # Polly models
+    "PollyVoice",
+    "PollyEngine",
+    "PollyTTSResponse",
 ]
