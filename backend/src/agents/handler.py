@@ -3,6 +3,7 @@
 import json
 from typing import Any
 
+from src.agents.market_insight import MarketInsightAgent, MarketInsightInput
 from src.agents.product_analyzer import ProductAnalyzerAgent, ProductAnalyzerInput
 from src.agents.script_generator import ScriptGeneratorAgent, ScriptGeneratorInput
 from src.agents.script_optimizer import ScriptOptimizerAgent, ScriptOptimizerInput
@@ -16,6 +17,7 @@ logger = get_logger(__name__)
 # Agent registry mapping task names to (AgentClass, InputClass)
 AGENTS = {
     "analyze": (ProductAnalyzerAgent, ProductAnalyzerInput),
+    "market_insight": (MarketInsightAgent, MarketInsightInput),
     "generate": (ScriptGeneratorAgent, ScriptGeneratorInput),
     "optimize": (ScriptOptimizerAgent, ScriptOptimizerInput),
     "review": (ScriptReviewerAgent, ScriptReviewerInput),
@@ -24,6 +26,7 @@ AGENTS = {
 # Status mapping for each task
 STATUS_MAP = {
     "analyze": "ANALYZING",
+    "market_insight": "ANALYZING",
     "generate": "SCRIPTING",
     "optimize": "SCRIPTING",
     "review": "SCRIPTING",
@@ -156,9 +159,22 @@ def _build_input(task: str, event: dict[str, Any], input_class: type) -> Any:
             image_keys=product.get("image_keys", []),
         )
 
+    elif task == "market_insight":
+        # Market insight input from analyzer output
+        analysis = context.get("analyze", {}).get("output", {})
+
+        return input_class(
+            **base,
+            product_category=analysis.get("product_category", ""),
+            target_audience=analysis.get("target_audience", ""),
+            key_features=analysis.get("key_features", []),
+            price_positioning=analysis.get("price_positioning", "mid-range"),
+        )
+
     elif task == "generate":
         # Script generator input from analyzer output
         analysis = context.get("analyze", {}).get("output", {})
+        market_insight = context.get("market_insight", {}).get("output", {})
 
         return input_class(
             **base,
@@ -170,11 +186,11 @@ def _build_input(task: str, event: dict[str, Any], input_class: type) -> Any:
             visual_elements=analysis.get("visual_elements", []),
             price_positioning=analysis.get("price_positioning", "mid-range"),
             suggested_hooks=analysis.get("suggested_hooks", []),
-            # Market insights would come from insight agent (not yet implemented)
-            content_angles=adjustments.get("content_angles", []),
-            trending_formats=adjustments.get("trending_formats", []),
-            platform_tips=adjustments.get("platform_tips", {}),
-            suggested_music_style=adjustments.get("suggested_music_style", ""),
+            # Market insights from market insight agent
+            content_angles=market_insight.get("content_angles", []),
+            trending_formats=market_insight.get("trending_formats", []),
+            platform_tips=market_insight.get("platform_tips", {}),
+            suggested_music_style=market_insight.get("suggested_music_style", ""),
             # User preferences
             target_duration=adjustments.get("target_duration", 45),
             tone=adjustments.get("tone"),
