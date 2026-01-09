@@ -1,8 +1,11 @@
-"""Worker services for TTS and video generation."""
-from src.workers.services.video_service import VideoResult, VideoService, get_video_service
+"""Service modules for business logic and orchestration."""
+from src.workers.services.tts_service import TTSService, get_tts_service
+from src.workers.services.video_service import VideoService, get_video_service
+
 
 __all__ = [
-    "VideoResult",
-    "VideoService",
-    "get_video_service"
+    "TTSService",
+    "VideoService", 
+    "get_tts_service",
+    "get_video_service",
 ]
