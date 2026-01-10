@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from anthropic import Anthropic
+from openai import ChatCompletion
 from pydantic import BaseModel
 
 from src.shared.config import get_settings
@@ -27,32 +27,28 @@ class AgentOutput(BaseModel):
     error: str | None = None
 
 
-def get_anthropic_client() -> Anthropic:
-    """Get Anthropic client with API key from Secrets Manager."""
-    settings = get_settings()
-
-    # Try settings first (for local dev)
-    if settings.anthropic_api_key:
-        api_key = settings.anthropic_api_key.get_secret_value()
-    else:
-        # Get from Secrets Manager
-        secrets = get_secrets()
-        api_key = secrets.get_secret(settings.secrets_anthropic_key)
-
-    return Anthropic(api_key=api_key)
-
-
 class BaseAgent(ABC):
     """Base class for all CrewAI agents."""
 
     name: str = "BaseAgent"
     description: str = ""
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "gpt-4.1"
     max_tokens: int = 4096
     temperature: float = 0.7
 
     def __init__(self) -> None:
-        self._client = get_anthropic_client()
+        settings = get_settings()
+        self.api_key = settings.azure_openai_api_key.get_secret_value() if settings.azure_openai_api_key else None
+        self.endpoint = settings.azure_openai_endpoint
+
+        if not self.api_key or not self.endpoint:
+            raise ValueError("Azure OpenAI API key and endpoint must be set in environment variables.")
+
+        # Configure OpenAI client
+        ChatCompletion.api_key = self.api_key
+        ChatCompletion.api_base = self.endpoint
+        self._client = ChatCompletion
+
         self.logger = get_logger(f"agents.{self.name}")
 
     @property
@@ -93,25 +89,25 @@ class BaseAgent(ABC):
         try:
             user_prompt = self.build_user_prompt(input_data, context)
 
-            response = self._client.messages.create(
+            response = self._client.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
-                system=self.system_prompt,
                 messages=[
-                    {"role": "user", "content": user_prompt}
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
             )
 
-            response_text = response.content[0].text
+            response_text = response.choices[0].message["content"]
 
             # Log token usage for cost monitoring
             self.logger.info(
                 "agent_llm_call",
                 agent=self.name,
                 job_id=input_data.job_id,
-                input_tokens=response.usage.input_tokens,
-                output_tokens=response.usage.output_tokens,
+                input_tokens=response["usage"]["prompt_tokens"],
+                output_tokens=response["usage"]["completion_tokens"],
             )
 
             output = self.parse_response(response_text, input_data)

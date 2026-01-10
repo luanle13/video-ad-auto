@@ -62,6 +62,10 @@ class Settings(BaseSettings):
     agent_timeout_seconds: int = 180
     tts_timeout_seconds: int = 120
     video_generation_timeout_seconds: int = 600
+    
+    # Azure OpenAI
+    azure_openai_api_key: SecretStr | None = None
+    azure_openai_endpoint: str | None = None
 
 
 @lru_cache

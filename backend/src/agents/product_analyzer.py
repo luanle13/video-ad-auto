@@ -36,7 +36,7 @@ class ProductAnalyzerAgent(BaseAgent):
 
     name = "ProductAnalyzer"
     description = "Analyzes product images and metadata to extract features, USPs, and visual elements"
-    model = "claude-sonnet-4-20250514"  # Using Sonnet for vision
+    model = "gpt-4.1"  # Updated to GPT-4.1 for Azure Foundry
     max_tokens = 2048
     temperature = 0.3  # Lower temperature for analysis
 
