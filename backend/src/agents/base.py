@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from openai import ChatCompletion
+from openai import OpenAI
 from pydantic import BaseModel
 
 from src.shared.config import get_settings
@@ -44,10 +44,11 @@ class BaseAgent(ABC):
         if not self.api_key or not self.endpoint:
             raise ValueError("Azure OpenAI API key and endpoint must be set in environment variables.")
 
-        # Configure OpenAI client
-        ChatCompletion.api_key = self.api_key
-        ChatCompletion.api_base = self.endpoint
-        self._client = ChatCompletion
+        # Configure OpenAI client (v1.x)
+        self._client = OpenAI(
+            base_url=self.endpoint,
+            api_key=self.api_key
+        )
 
         self.logger = get_logger(f"agents.{self.name}")
 
@@ -89,7 +90,7 @@ class BaseAgent(ABC):
         try:
             user_prompt = self.build_user_prompt(input_data, context)
 
-            response = self._client.create(
+            response = self._client.chat.completions.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
@@ -98,16 +99,15 @@ class BaseAgent(ABC):
                     {"role": "user", "content": user_prompt},
                 ],
             )
-
-            response_text = response.choices[0].message["content"]
+            response_text = response.choices[0].message.content
 
             # Log token usage for cost monitoring
             self.logger.info(
                 "agent_llm_call",
                 agent=self.name,
                 job_id=input_data.job_id,
-                input_tokens=response["usage"]["prompt_tokens"],
-                output_tokens=response["usage"]["completion_tokens"],
+                input_tokens=response.usage.prompt_tokens,
+                output_tokens=response.usage.completion_tokens,
             )
 
             output = self.parse_response(response_text, input_data)

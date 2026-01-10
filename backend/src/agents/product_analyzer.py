@@ -124,26 +124,26 @@ Please analyze the product images and metadata above, then provide your analysis
             images = getattr(self, "_pending_images", [])
 
             # Build content array with images and text
-            content = images + [{"type": "text", "text": user_prompt}]
-
-            response = self._client.messages.create(
+            # For GPT-4.1, vision support is not available via Azure OpenAI as of now.
+            # We'll just send the text prompt.
+            response = self._client.chat.completions.create(
                 model=self.model,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
-                system=self.system_prompt,
                 messages=[
-                    {"role": "user", "content": content}
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": user_prompt},
                 ],
             )
-
-            response_text = response.content[0].text
+            response_text = response.choices[0].message.content
 
             self.logger.info(
                 "agent_llm_call",
                 agent=self.name,
                 job_id=input_data.job_id,
-                input_tokens=response.usage.input_tokens,
-                output_tokens=response.usage.output_tokens,
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                total_tokens=response.usage.total_tokens,
             )
 
             output = self.parse_response(response_text, input_data)

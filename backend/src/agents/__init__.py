@@ -4,7 +4,6 @@ from src.agents.base import (
     AgentInput,
     AgentOutput,
     BaseAgent,
-    get_anthropic_client,
 )
 from src.agents.handler import handler
 from src.agents.market_insight import (
@@ -42,7 +41,6 @@ __all__ = [
     "AgentInput",
     "AgentOutput",
     "BaseAgent",
-    "get_anthropic_client",
     # Lambda handler
     "handler",
     "agent_handler",
