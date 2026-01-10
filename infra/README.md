@@ -32,7 +32,7 @@ Before deploying the infrastructure, ensure you have:
 
 ```bash
 # Navigate to the infra directory
-cd backend/infra
+cd infra
 
 # Initialize Terraform (downloads providers and modules)
 terraform init \

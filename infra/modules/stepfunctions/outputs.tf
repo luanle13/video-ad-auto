@@ -1,14 +1,14 @@
 output "state_machine_arn" {
   description = "ARN of the Step Functions state machine"
-  value       = aws_sfn_state_machine.video_pipeline.arn
+  value       = aws_sfn_state_machine.main.arn
 }
 
 output "state_machine_name" {
   description = "Name of the Step Functions state machine"
-  value       = aws_sfn_state_machine.video_pipeline.name
+  value       = aws_sfn_state_machine.main.name
 }
 
-output "execution_role_arn" {
-  description = "ARN of the Step Functions execution role"
-  value       = aws_iam_role.stepfunctions_execution.arn
+output "role_arn" {
+  description = "ARN of the IAM role used by the state machine"
+  value       = aws_iam_role.main.arn
 }
