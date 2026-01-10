@@ -1,0 +1,245 @@
+{
+  "Comment": "AI Video Generation Pipeline State Machine",
+  "StartAt": "Analyze",
+  "States": {
+    "Analyze": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName.$": "$.agent_lambda_arn",
+        "Payload": {
+          "task": "analyze",
+          "user_id.$": "$.user_id",
+          "job_id.$": "$.job_id",
+          "product.$": "$.product"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "FailState"
+        }
+      ],
+      "TimeoutSeconds": 900,
+      "Next": "Insight"
+    },
+    "Insight": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName.$": "$.agent_lambda_arn",
+        "Payload": {
+          "task": "insight",
+          "user_id.$": "$.user_id",
+          "job_id.$": "$.job_id",
+          "analysis_result.$": "$.analysis_result"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "FailState"
+        }
+      ],
+      "TimeoutSeconds": 900,
+      "Next": "Generate"
+    },
+    "Generate": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName.$": "$.agent_lambda_arn",
+        "Payload": {
+          "task": "generate",
+          "user_id.$": "$.user_id",
+          "job_id.$": "$.job_id",
+          "insight_result.$": "$.insight_result"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "FailState"
+        }
+      ],
+      "TimeoutSeconds": 900,
+      "Next": "Optimize"
+    },
+    "Optimize": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName.$": "$.agent_lambda_arn",
+        "Payload": {
+          "task": "optimize",
+          "user_id.$": "$.user_id",
+          "job_id.$": "$.job_id",
+          "generation_result.$": "$.generation_result"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "FailState"
+        }
+      ],
+      "TimeoutSeconds": 900,
+      "Next": "Review"
+    },
+    "Review": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName.$": "$.agent_lambda_arn",
+        "Payload": {
+          "task": "review",
+          "user_id.$": "$.user_id",
+          "job_id.$": "$.job_id",
+          "optimization_result.$": "$.optimization_result"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "FailState"
+        }
+      ],
+      "TimeoutSeconds": 900,
+      "Next": "Prompt"
+    },
+    "Prompt": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName.$": "$.agent_lambda_arn",
+        "Payload": {
+          "task": "prompt",
+          "user_id.$": "$.user_id",
+          "job_id.$": "$.job_id",
+          "review_result.$": "$.review_result"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "FailState"
+        }
+      ],
+      "TimeoutSeconds": 900,
+      "Next": "TTS"
+    },
+    "TTS": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName.$": "$.tts_lambda_arn",
+        "Payload": {
+          "user_id.$": "$.user_id",
+          "job_id.$": "$.job_id",
+          "script.$": "$.script"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "FailState"
+        }
+      ],
+      "TimeoutSeconds": 900,
+      "Next": "Video"
+    },
+    "Video": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName.$": "$.video_lambda_arn",
+        "Payload": {
+          "user_id.$": "$.user_id",
+          "job_id.$": "$.job_id",
+          "video_prompt.$": "$.video_prompt",
+          "audio_key.$": "$.audio_key"
+        }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["Lambda.ServiceException", "Lambda.AWSLambdaException", "Lambda.SdkClientException"],
+          "IntervalSeconds": 2,
+          "MaxAttempts": 6,
+          "BackoffRate": 2
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "Next": "FailState"
+        }
+      ],
+      "TimeoutSeconds": 900,
+      "Next": "Complete"
+    },
+    "Complete": {
+      "Type": "Succeed"
+    },
+    "FailState": {
+      "Type": "Fail",
+      "Cause": "An error occurred during video generation pipeline execution",
+      "Error": "PipelineExecutionError"
+    }
+  }
+}
