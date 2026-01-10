@@ -164,3 +164,71 @@ module "lambda_video" {
 
   layers = []
 }
+
+# API Gateway module
+module "api_gateway" {
+  source = "./modules/api_gateway"
+
+  name_prefix                  = local.name_prefix
+  lambda_invoke_arn            = module.lambda_api.function_invoke_arn  # Assuming Lambda module outputs this
+  lambda_function_name         = module.lambda_api.function_name
+  cognito_user_pool_arn        = aws_cognito_user_pool.main.arn
+  stage_name                   = var.environment
+
+  depends_on = [
+    module.lambda_api,
+    aws_cognito_user_pool.main
+  ]
+}
+
+# CloudFront module for static assets
+module "cloudfront" {
+  source = "./modules/cloudfront"
+
+  name_prefix                        = local.name_prefix
+  s3_bucket_id                       = aws_s3_bucket.webapp.id
+  s3_bucket_arn                      = aws_s3_bucket.webapp.arn
+  s3_bucket_regional_domain_name     = aws_s3_bucket.webapp.bucket_regional_domain_name
+
+  depends_on = [
+    aws_s3_bucket.webapp
+  ]
+}
+
+# Monitoring module for Lambda function alerts
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  name_prefix            = local.name_prefix
+  lambda_function_names  = [
+    module.lambda_api.function_name,
+    module.lambda_agents.function_name,
+    module.lambda_tts.function_name,
+    module.lambda_video.function_name
+  ]
+  sns_email              = var.notification_email
+
+  depends_on = [
+    module.lambda_api,
+    module.lambda_agents,
+    module.lambda_tts,
+    module.lambda_video
+  ]
+}
+
+# Budget module for cost monitoring
+module "budget" {
+  source = "./modules/budget"
+
+  name_prefix        = local.name_prefix
+  budget_limit       = var.monthly_budget_limit
+  notification_email = var.notification_email
+
+  depends_on = [
+    aws_s3_bucket.videos,
+    aws_s3_bucket.images,
+    aws_dynamodb_table.users,
+    aws_dynamodb_table.products,
+    aws_dynamodb_table.jobs
+  ]
+}
