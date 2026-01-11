@@ -1,0 +1,45 @@
+name: 'Configure AWS Credentials'
+description: 'Composite action to configure AWS credentials with support for both OIDC and access keys'
+
+inputs:
+  aws-region:
+    description: 'AWS region to use'
+    required: true
+    default: 'us-east-1'
+  role-to-assume:
+    description: 'AWS IAM role to assume (for OIDC)'
+    required: false
+  role-duration-seconds:
+    description: 'Duration for the assumed role in seconds'
+    required: false
+    default: '3600'
+  role-session-name:
+    description: 'Session name for the assumed role'
+    required: false
+    default: 'GitHubActionSession'
+  aws-access-key-id:
+    description: 'AWS Access Key ID (for access key authentication)'
+    required: false
+  aws-secret-access-key:
+    description: 'AWS Secret Access Key (for access key authentication)'
+    required: false
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Configure AWS Credentials (OIDC)
+      if: ${{ inputs.role-to-assume != '' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-region: ${{ inputs.aws-region }}
+        role-to-assume: ${{ inputs.role-to-assume }}
+        role-duration-seconds: ${{ inputs.role-duration-seconds }}
+        role-session-name: ${{ inputs.role-session-name }}
+
+    - name: Configure AWS Credentials (Access Keys)
+      if: ${{ inputs.aws-access-key-id != '' && inputs.aws-secret-access-key != '' }}
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ inputs.aws-access-key-id }}
+        aws-secret-access-key: ${{ inputs.aws-secret-access-key }}
+        aws-region: ${{ inputs.aws-region }}
