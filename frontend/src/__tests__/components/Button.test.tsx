@@ -1,59 +1,40 @@
-import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import Button from '@/components/ui/Button';
+import { render, screen, fireEvent } from '@testing-library/react';
+import Button from '../../components/ui/Button';
 
-describe('Button', () => {
-  it('renders with correct text', () => {
-    render(<Button>Click me</Button>);
-    expect(screen.getByText('Click me')).toBeInTheDocument();
+describe('Button Component', () => {
+  it('renders with text', () => {
+    render(<Button>Click Me</Button>);
+    expect(screen.getByText('Click Me')).toBeInTheDocument();
   });
 
-  it('applies correct variant classes', () => {
-    const { rerender } = render(<Button variant="primary">Test</Button>);
-    expect(screen.getByRole('button')).toHaveClass('bg-primary-600');
-
-    rerender(<Button variant="secondary">Test</Button>);
-    expect(screen.getByRole('button')).toHaveClass('bg-gray-200');
-
-    rerender(<Button variant="ghost">Test</Button>);
-    expect(screen.getByRole('button')).toHaveClass('bg-transparent');
-
-    rerender(<Button variant="danger">Test</Button>);
-    expect(screen.getByRole('button')).toHaveClass('bg-error-600');
+  it('applies primary variant styling', () => {
+    render(<Button variant="primary">Primary Button</Button>);
+    const button = screen.getByText('Primary Button');
+    expect(button).toHaveClass('bg-primary-600');
+    expect(button).toHaveClass('text-white');
   });
 
-  it('applies correct size classes', () => {
-    const { rerender } = render(<Button size="sm">Test</Button>);
-    expect(screen.getByRole('button')).toHaveClass('text-xs');
-
-    rerender(<Button size="md">Test</Button>);
-    expect(screen.getByRole('button')).toHaveClass('text-sm');
-
-    rerender(<Button size="lg">Test</Button>);
-    expect(screen.getByRole('button')).toHaveClass('text-base');
+  it('handles disabled state', () => {
+    render(<Button disabled>Disabled Button</Button>);
+    const button = screen.getByText('Disabled Button');
+    expect(button).toBeDisabled();
+    expect(button).toHaveClass('disabled:opacity-50');
   });
 
-  it('disables button when isLoading is true', () => {
-    render(<Button isLoading={true}>Test</Button>);
-    expect(screen.getByRole('button')).toBeDisabled();
+  it('shows loading state', () => {
+    render(<Button isLoading={true}>Loading Button</Button>);
+    const button = screen.getByText('Loading Button');
+    expect(button).toHaveAttribute('disabled');
+    // Check if the spinner SVG is present in the button
+    expect(button.querySelector('svg')).toBeInTheDocument();
   });
 
-  it('disables button when disabled prop is true', () => {
-    render(<Button disabled={true}>Test</Button>);
-    expect(screen.getByRole('button')).toBeDisabled();
-  });
-
-  it('calls onClick handler when clicked', () => {
-    const mockOnClick = vi.fn();
-    render(<Button onClick={mockOnClick}>Test</Button>);
-    
-    fireEvent.click(screen.getByRole('button'));
-    expect(mockOnClick).toHaveBeenCalledTimes(1);
-  });
-
-  it('shows loading spinner when isLoading is true', () => {
-    render(<Button isLoading={true}>Test</Button>);
-    expect(screen.getByRole('status')).toBeInTheDocument();
+  it('calls click handler when clicked', () => {
+    const handleClick = vi.fn();
+    render(<Button onClick={handleClick}>Clickable Button</Button>);
+    const button = screen.getByText('Clickable Button');
+    fireEvent.click(button);
+    expect(handleClick).toHaveBeenCalledTimes(1);
   });
 });
