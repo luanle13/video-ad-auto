@@ -1,0 +1,208 @@
+name: Deploy Prod
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-southeast-1
+  ENVIRONMENT: prod
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  check-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get the latest commit SHA from the triggering event
+            const { data: { commit: { sha } } } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            
+            // Get the commit status for the latest commit
+            const { data: status } = await github.rest.repos.getCombinedStatusForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: sha
+            });
+            
+            // Check if all required statuses are successful
+            const requiredChecks = ['backend-lint', 'backend-test', 'backend-security', 'frontend-lint', 'frontend-test', 'frontend-build', 'terraform-validate'];
+            const successfulChecks = status.statuses
+              .filter(check => requiredChecks.includes(check.context) && check.state === 'success');
+            
+            if (successfulChecks.length !== requiredChecks.length) {
+              console.log(`Not all required checks have passed. Expected: ${requiredChecks.length}, Got: ${successfulChecks.length}`);
+              console.log('Failing checks:');
+              requiredChecks.forEach(check => {
+                const checkResult = status.statuses.find(s => s.context === check);
+                if (!checkResult || checkResult.state !== 'success') {
+                  console.log(`  - ${check}: ${checkResult ? checkResult.state : 'not found'}`);
+                }
+              });
+              
+              core.setFailed('Not all required CI checks have passed');
+            } else {
+              console.log('All required CI checks have passed');
+            }
+
+  deploy-infra:
+    needs: check-ci
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://your-domain.com
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
+          role-session-name: GitHubActionSession
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: |
+          cd infra
+          terraform init -backend-config="bucket=${{ secrets.TERRAFORM_STATE_BUCKET }}" -backend-config="key=prod/terraform.tfstate" -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: Terraform Plan
+        run: |
+          cd infra
+          terraform plan -var-file=environments/prod.tfvars -out=tfplan
+
+      - name: Store plan as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-plan
+          path: infra/tfplan
+
+      - name: Terraform Apply
+        run: |
+          cd infra
+          terraform apply tfplan
+
+  deploy-backend:
+    needs: check-ci
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://your-domain.com
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
+          role-session-name: GitHubActionSession
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Package Lambda function
+        run: |
+          cd backend
+          mkdir -p package
+          pip install -r requirements.txt -t package/
+          cp -r src package/
+          cd package && zip -r ../lambda.zip . && cd ..
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp backend/lambda.zip s3://${{ secrets.ARTIFACTS_BUCKET }}/lambda-${{ github.sha }}.zip
+
+      - name: Update Lambda functions
+        run: |
+          FUNCTIONS=("api" "agents" "tts" "video")
+          for func in "${FUNCTIONS[@]}"; do
+            aws lambda update-function-code \
+              --function-name $func-${{ env.ENVIRONMENT }} \
+              --s3-bucket ${{ secrets.ARTIFACTS_BUCKET }} \
+              --s3-key lambda-${{ github.sha }}.zip
+          done
+
+  deploy-frontend:
+    needs: [deploy-backend, deploy-infra]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://your-domain.com
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: 'frontend/package-lock.json'
+
+      - name: Install and build frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
+          role-session-name: GitHubActionSession
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync frontend/dist/ s3://${{ secrets.WEBAPP_BUCKET }} --delete
+
+      - name: Invalidate CloudFront
+        run: |
+          aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+  notify:
+    needs: [deploy-backend, deploy-infra, deploy-frontend]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Notify Success
+        if: ${{ contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: success
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          text: 'Production deployment completed successfully! Commit: ${{ github.sha }}'
+
+      - name: Notify Failure
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        uses: 8398a7/action-slack@v3
+        with:
+          status: failure
+          channel: '#deployments'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+          text: 'Production deployment failed! Check logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}'
