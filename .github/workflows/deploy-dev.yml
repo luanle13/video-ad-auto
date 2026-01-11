@@ -25,19 +25,19 @@ jobs:
               owner: context.repo.owner,
               repo: context.repo.repo,
             });
-            
+
             // Get the commit status for the latest commit
             const { data: status } = await github.rest.repos.getCombinedStatusForRef({
               owner: context.repo.owner,
               repo: context.repo.repo,
               ref: sha
             });
-            
+
             // Check if all required statuses are successful
             const requiredChecks = ['backend-lint', 'backend-test', 'backend-security', 'frontend-lint', 'frontend-test', 'frontend-build', 'terraform-validate'];
             const successfulChecks = status.statuses
               .filter(check => requiredChecks.includes(check.context) && check.state === 'success');
-            
+
             if (successfulChecks.length !== requiredChecks.length) {
               console.log(`Not all required checks have passed. Expected: ${requiredChecks.length}, Got: ${successfulChecks.length}`);
               console.log('Failing checks:');
@@ -47,8 +47,54 @@ jobs:
                   console.log(`  - ${check}: ${checkResult ? checkResult.state : 'not found'}`);
                 }
               });
-              
+
               core.setFailed('Not all required CI checks have passed');
             } else {
               console.log('All required CI checks have passed');
             }
+
+  deploy-backend:
+    needs: check-ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
+          role-session-name: GitHubActionSession
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          pip install -r requirements.txt
+
+      - name: Package Lambda function
+        run: |
+          cd backend
+          mkdir -p package
+          pip install -r requirements.txt -t package/
+          cp -r src package/
+          cd package && zip -r ../lambda.zip . && cd ..
+
+      - name: Upload to S3
+        run: |
+          aws s3 cp backend/lambda.zip s3://${{ secrets.ARTIFACTS_BUCKET }}/lambda-${{ github.sha }}.zip
+
+      - name: Update Lambda functions
+        run: |
+          FUNCTIONS=("api" "agents" "tts" "video")
+          for func in "${FUNCTIONS[@]}"; do
+            aws lambda update-function-code \
+              --function-name $func-${{ env.ENVIRONMENT }} \
+              --s3-bucket ${{ secrets.ARTIFACTS_BUCKET }} \
+              --s3-key lambda-${{ github.sha }}.zip
+          done
