@@ -79,6 +79,115 @@ class TestHeaders:
         assert headers["Accept"] == "audio/mpeg"
 
 
+class TestSelectVoiceMapping:
+    """Tests for ElevenLabsVoice.select_voice method."""
+
+    def test_select_voice_female_energetic(self) -> None:
+        """Test selecting female energetic voice returns BELLA."""
+        voice_id = ElevenLabsVoice.select_voice("female", "energetic")
+
+        assert voice_id == ElevenLabsVoice.BELLA.value
+
+    def test_select_voice_female_professional(self) -> None:
+        """Test selecting female professional voice returns DOMI."""
+        voice_id = ElevenLabsVoice.select_voice("female", "professional")
+
+        assert voice_id == ElevenLabsVoice.DOMI.value
+
+    def test_select_voice_female_casual(self) -> None:
+        """Test selecting female casual voice returns ELLI."""
+        voice_id = ElevenLabsVoice.select_voice("female", "casual")
+
+        assert voice_id == ElevenLabsVoice.ELLI.value
+
+    def test_select_voice_female_friendly(self) -> None:
+        """Test selecting female friendly voice returns ELLI."""
+        voice_id = ElevenLabsVoice.select_voice("female", "friendly")
+
+        assert voice_id == ElevenLabsVoice.ELLI.value
+
+    def test_select_voice_female_narrative(self) -> None:
+        """Test selecting female narrative voice returns RACHEL."""
+        voice_id = ElevenLabsVoice.select_voice("female", "narrative")
+
+        assert voice_id == ElevenLabsVoice.RACHEL.value
+
+    def test_select_voice_female_default(self) -> None:
+        """Test selecting female with no style returns RACHEL (default)."""
+        voice_id = ElevenLabsVoice.select_voice("female")
+
+        assert voice_id == ElevenLabsVoice.RACHEL.value
+
+    def test_select_voice_female_unknown_style(self) -> None:
+        """Test selecting female with unknown style returns RACHEL (default)."""
+        voice_id = ElevenLabsVoice.select_voice("female", "unknown_style")
+
+        assert voice_id == ElevenLabsVoice.RACHEL.value
+
+    def test_select_voice_male_professional(self) -> None:
+        """Test selecting male professional voice returns ANTONI."""
+        voice_id = ElevenLabsVoice.select_voice("male", "professional")
+
+        assert voice_id == ElevenLabsVoice.ANTONI.value
+
+    def test_select_voice_male_casual(self) -> None:
+        """Test selecting male casual voice returns JOSH."""
+        voice_id = ElevenLabsVoice.select_voice("male", "casual")
+
+        assert voice_id == ElevenLabsVoice.JOSH.value
+
+    def test_select_voice_male_authoritative(self) -> None:
+        """Test selecting male authoritative voice returns ARNOLD."""
+        voice_id = ElevenLabsVoice.select_voice("male", "authoritative")
+
+        assert voice_id == ElevenLabsVoice.ARNOLD.value
+
+    def test_select_voice_male_confident(self) -> None:
+        """Test selecting male confident voice returns ARNOLD."""
+        voice_id = ElevenLabsVoice.select_voice("male", "confident")
+
+        assert voice_id == ElevenLabsVoice.ARNOLD.value
+
+    def test_select_voice_male_default(self) -> None:
+        """Test selecting male with no style returns ADAM (default)."""
+        voice_id = ElevenLabsVoice.select_voice("male")
+
+        assert voice_id == ElevenLabsVoice.ADAM.value
+
+    def test_select_voice_male_unknown_style(self) -> None:
+        """Test selecting male with unknown style returns ADAM (default)."""
+        voice_id = ElevenLabsVoice.select_voice("male", "unknown_style")
+
+        assert voice_id == ElevenLabsVoice.ADAM.value
+
+    def test_select_voice_case_insensitive_gender(self) -> None:
+        """Test that gender selection is case-insensitive."""
+        voice_id_upper = ElevenLabsVoice.select_voice("FEMALE", "energetic")
+        voice_id_lower = ElevenLabsVoice.select_voice("female", "energetic")
+        voice_id_mixed = ElevenLabsVoice.select_voice("Female", "energetic")
+
+        assert voice_id_upper == voice_id_lower == voice_id_mixed
+        assert voice_id_upper == ElevenLabsVoice.BELLA.value
+
+    def test_select_voice_case_insensitive_style(self) -> None:
+        """Test that style selection is case-insensitive."""
+        voice_id_upper = ElevenLabsVoice.select_voice("female", "PROFESSIONAL")
+        voice_id_lower = ElevenLabsVoice.select_voice("female", "professional")
+        voice_id_mixed = ElevenLabsVoice.select_voice("female", "Professional")
+
+        assert voice_id_upper == voice_id_lower == voice_id_mixed
+        assert voice_id_upper == ElevenLabsVoice.DOMI.value
+
+    def test_select_voice_invalid_gender_raises_error(self) -> None:
+        """Test that invalid gender raises ValueError."""
+        with pytest.raises(ValueError) as exc_info:
+            ElevenLabsVoice.select_voice("invalid", "professional")
+
+        assert "Invalid gender" in str(exc_info.value)
+        assert "male" in str(exc_info.value)
+        assert "female" in str(exc_info.value)
+
+
 class TestWrapException:
     """Tests for _wrap_exception method."""
 

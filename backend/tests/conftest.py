@@ -1,6 +1,6 @@
 import os
 import pytest
-from moto import mock_dynamodb, mock_s3
+from moto import mock_aws
 import boto3
 
 
@@ -15,7 +15,7 @@ def aws_credentials():
 @pytest.fixture
 def dynamodb_client(aws_credentials):
     """Create mock DynamoDB client."""
-    with mock_dynamodb():
+    with mock_aws():
         client = boto3.client("dynamodb", region_name=os.environ["AWS_DEFAULT_REGION"])
         yield client
 
@@ -123,7 +123,7 @@ def create_tables(dynamodb_client):
 @pytest.fixture
 def s3_client(aws_credentials):
     """Create mock S3 client."""
-    with mock_s3():
+    with mock_aws():
         client = boto3.client("s3", region_name=os.environ["AWS_DEFAULT_REGION"])
         yield client
 

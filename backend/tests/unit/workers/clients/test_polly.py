@@ -49,6 +49,202 @@ class TestGetPollyClient:
         assert mock_boto3.client.call_count == 1
 
 
+class TestSelectVoiceByGenderAccent:
+    """Tests for PollyVoice.select_voice method."""
+
+    def test_select_voice_female_us(self) -> None:
+        """Test selecting female US voice returns JOANNA."""
+        voice_id = PollyVoice.select_voice("female", "us")
+
+        assert voice_id == PollyVoice.JOANNA.value
+
+    def test_select_voice_female_british(self) -> None:
+        """Test selecting female British voice returns AMY."""
+        voice_id = PollyVoice.select_voice("female", "british")
+
+        assert voice_id == PollyVoice.AMY.value
+
+    def test_select_voice_female_uk(self) -> None:
+        """Test selecting female UK voice returns AMY."""
+        voice_id = PollyVoice.select_voice("female", "uk")
+
+        assert voice_id == PollyVoice.AMY.value
+
+    def test_select_voice_female_default(self) -> None:
+        """Test selecting female with no accent returns JOANNA (US default)."""
+        voice_id = PollyVoice.select_voice("female")
+
+        assert voice_id == PollyVoice.JOANNA.value
+
+    def test_select_voice_female_unknown_accent(self) -> None:
+        """Test selecting female with unknown accent returns JOANNA (US default)."""
+        voice_id = PollyVoice.select_voice("female", "australian")
+
+        assert voice_id == PollyVoice.JOANNA.value
+
+    def test_select_voice_male_us(self) -> None:
+        """Test selecting male US voice returns MATTHEW."""
+        voice_id = PollyVoice.select_voice("male", "us")
+
+        assert voice_id == PollyVoice.MATTHEW.value
+
+    def test_select_voice_male_british(self) -> None:
+        """Test selecting male British voice returns BRIAN."""
+        voice_id = PollyVoice.select_voice("male", "british")
+
+        assert voice_id == PollyVoice.BRIAN.value
+
+    def test_select_voice_male_uk(self) -> None:
+        """Test selecting male UK voice returns BRIAN."""
+        voice_id = PollyVoice.select_voice("male", "uk")
+
+        assert voice_id == PollyVoice.BRIAN.value
+
+    def test_select_voice_male_default(self) -> None:
+        """Test selecting male with no accent returns MATTHEW (US default)."""
+        voice_id = PollyVoice.select_voice("male")
+
+        assert voice_id == PollyVoice.MATTHEW.value
+
+    def test_select_voice_male_unknown_accent(self) -> None:
+        """Test selecting male with unknown accent returns MATTHEW (US default)."""
+        voice_id = PollyVoice.select_voice("male", "indian")
+
+        assert voice_id == PollyVoice.MATTHEW.value
+
+    def test_select_voice_case_insensitive_gender(self) -> None:
+        """Test that gender selection is case-insensitive."""
+        voice_id_upper = PollyVoice.select_voice("MALE", "british")
+        voice_id_lower = PollyVoice.select_voice("male", "british")
+        voice_id_mixed = PollyVoice.select_voice("Male", "british")
+
+        assert voice_id_upper == voice_id_lower == voice_id_mixed
+        assert voice_id_upper == PollyVoice.BRIAN.value
+
+    def test_select_voice_case_insensitive_accent(self) -> None:
+        """Test that accent selection is case-insensitive."""
+        voice_id_upper = PollyVoice.select_voice("female", "BRITISH")
+        voice_id_lower = PollyVoice.select_voice("female", "british")
+        voice_id_mixed = PollyVoice.select_voice("female", "British")
+
+        assert voice_id_upper == voice_id_lower == voice_id_mixed
+        assert voice_id_upper == PollyVoice.AMY.value
+
+    def test_select_voice_invalid_gender_raises_error(self) -> None:
+        """Test that invalid gender raises ValueError."""
+        with pytest.raises(ValueError) as exc_info:
+            PollyVoice.select_voice("invalid", "us")
+
+        assert "Invalid gender" in str(exc_info.value)
+        assert "male" in str(exc_info.value)
+        assert "female" in str(exc_info.value)
+
+
+class TestTextToSSMLConversion:
+    """Tests for PollyVoice.text_to_ssml method."""
+
+    def test_text_to_ssml_plain_text(self) -> None:
+        """Test SSML conversion without prosody attributes."""
+        ssml = PollyVoice.text_to_ssml("Hello world")
+
+        assert ssml == "<speak>Hello world</speak>"
+
+    def test_text_to_ssml_with_rate(self) -> None:
+        """Test SSML conversion with rate attribute."""
+        ssml = PollyVoice.text_to_ssml("Hello", rate="fast")
+
+        assert ssml == '<speak><prosody rate="fast">Hello</prosody></speak>'
+
+    def test_text_to_ssml_with_pitch(self) -> None:
+        """Test SSML conversion with pitch attribute."""
+        ssml = PollyVoice.text_to_ssml("Hello", pitch="high")
+
+        assert ssml == '<speak><prosody pitch="high">Hello</prosody></speak>'
+
+    def test_text_to_ssml_with_volume(self) -> None:
+        """Test SSML conversion with volume attribute."""
+        ssml = PollyVoice.text_to_ssml("Hello", volume="loud")
+
+        assert ssml == '<speak><prosody volume="loud">Hello</prosody></speak>'
+
+    def test_text_to_ssml_with_all_prosody(self) -> None:
+        """Test SSML conversion with rate, pitch, and volume."""
+        ssml = PollyVoice.text_to_ssml("Hello!", rate="fast", pitch="high", volume="loud")
+
+        assert "<speak><prosody" in ssml
+        assert 'rate="fast"' in ssml
+        assert 'pitch="high"' in ssml
+        assert 'volume="loud"' in ssml
+        assert ">Hello!</prosody></speak>" in ssml
+
+    def test_text_to_ssml_with_rate_and_pitch(self) -> None:
+        """Test SSML conversion with rate and pitch."""
+        ssml = PollyVoice.text_to_ssml("Test", rate="slow", pitch="low")
+
+        assert 'rate="slow"' in ssml
+        assert 'pitch="low"' in ssml
+
+    def test_text_to_ssml_escapes_ampersand(self) -> None:
+        """Test SSML conversion escapes ampersand character."""
+        ssml = PollyVoice.text_to_ssml("Tom & Jerry")
+
+        assert "Tom &amp; Jerry" in ssml
+        assert "<speak>Tom &amp; Jerry</speak>" == ssml
+
+    def test_text_to_ssml_escapes_less_than(self) -> None:
+        """Test SSML conversion escapes less-than character."""
+        ssml = PollyVoice.text_to_ssml("5 < 10")
+
+        assert "5 &lt; 10" in ssml
+
+    def test_text_to_ssml_escapes_greater_than(self) -> None:
+        """Test SSML conversion escapes greater-than character."""
+        ssml = PollyVoice.text_to_ssml("10 > 5")
+
+        assert "10 &gt; 5" in ssml
+
+    def test_text_to_ssml_escapes_double_quotes(self) -> None:
+        """Test SSML conversion escapes double quote character."""
+        ssml = PollyVoice.text_to_ssml('Say "hello"')
+
+        assert "Say &quot;hello&quot;" in ssml
+
+    def test_text_to_ssml_escapes_single_quotes(self) -> None:
+        """Test SSML conversion escapes single quote character."""
+        ssml = PollyVoice.text_to_ssml("It's great")
+
+        assert "It&apos;s great" in ssml
+
+    def test_text_to_ssml_escapes_multiple_special_chars(self) -> None:
+        """Test SSML conversion escapes all special characters."""
+        text = "Tom & Jerry say: \"Hi!\" It's <fun>"
+        ssml = PollyVoice.text_to_ssml(text)
+
+        assert "&amp;" in ssml
+        assert "&quot;" in ssml
+        assert "&apos;" in ssml
+        assert "&lt;" in ssml
+        assert "&gt;" in ssml
+
+    def test_text_to_ssml_rate_values(self) -> None:
+        """Test SSML with various rate values."""
+        for rate in ["x-slow", "slow", "medium", "fast", "x-fast"]:
+            ssml = PollyVoice.text_to_ssml("Test", rate=rate)
+            assert f'rate="{rate}"' in ssml
+
+    def test_text_to_ssml_pitch_values(self) -> None:
+        """Test SSML with various pitch values."""
+        for pitch in ["x-low", "low", "medium", "high", "x-high"]:
+            ssml = PollyVoice.text_to_ssml("Test", pitch=pitch)
+            assert f'pitch="{pitch}"' in ssml
+
+    def test_text_to_ssml_volume_values(self) -> None:
+        """Test SSML with various volume values."""
+        for volume in ["silent", "x-soft", "soft", "medium", "loud", "x-loud"]:
+            ssml = PollyVoice.text_to_ssml("Test", volume=volume)
+            assert f'volume="{volume}"' in ssml
+
+
 class TestPollyClientInitialization:
     """Tests for PollyClient initialization."""
 
