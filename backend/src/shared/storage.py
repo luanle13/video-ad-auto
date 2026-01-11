@@ -158,6 +158,13 @@ class S3Client:
             return True
         except ClientError:
             return False
+
+    def list_files_by_prefix(self, bucket_type: BucketType, prefix: str) -> list[str]:
+        """List files by prefix."""
+        bucket = self._get_bucket(bucket_type)
+
+        response = self._s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
+        return [obj["Key"] for obj in response.get("Contents", [])]
     
     def generate_image_key(self, user_id: str, product_id: str, filename: str) -> str:
         """Generate a unique key for a product image."""
