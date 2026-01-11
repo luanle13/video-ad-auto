@@ -1,6 +1,6 @@
 import os
 import pytest
-from moto import mock_dynamodb
+from moto import mock_dynamodb, mock_s3
 import boto3
 
 
@@ -115,6 +115,30 @@ def create_tables(dynamodb_client):
 
     yield {
         "users": "users",
-        "products": "products", 
+        "products": "products",
         "jobs": "jobs"
     }
+
+
+@pytest.fixture
+def s3_client(aws_credentials):
+    """Create mock S3 client."""
+    with mock_s3():
+        client = boto3.client("s3", region_name=os.environ["AWS_DEFAULT_REGION"])
+        yield client
+
+
+@pytest.fixture
+def create_buckets(s3_client):
+    """Create test buckets."""
+    # Create bucket with proper region configuration
+    location_constraint = {'LocationConstraint': os.environ["AWS_DEFAULT_REGION"]}
+    s3_client.create_bucket(
+        Bucket="test-images",
+        CreateBucketConfiguration=location_constraint
+    )
+    s3_client.create_bucket(
+        Bucket="test-videos",
+        CreateBucketConfiguration=location_constraint
+    )
+    return {"images": "test-images", "videos": "test-videos"}
