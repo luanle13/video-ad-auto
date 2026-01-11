@@ -172,3 +172,37 @@ jobs:
         with:
           name: frontend-dist
           path: frontend/dist/
+
+  terraform-validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+          terraform_wrapper: false
+
+      - name: Terraform fmt
+        run: |
+          cd infra
+          terraform fmt -check -recursive
+
+      - name: Terraform init
+        run: |
+          cd infra
+          terraform init -backend=false
+
+      - name: Terraform validate
+        run: |
+          cd infra
+          terraform validate
+
+  ci-success:
+    needs: [backend-test, backend-security, frontend-build, terraform-validate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo success message
+        run: echo "All CI checks passed!"
