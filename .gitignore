@@ -62,7 +62,6 @@ jspm_packages/
 ehthumbs.db
 Thumbs.db
 Icon?
-*/
 
 # Terraform
 .terraform/
@@ -100,7 +99,6 @@ temp/
 ehthumbs.db
 Thumbs.db
 Icon?
-*/
 
 # Python virtual environment
 .venv/
