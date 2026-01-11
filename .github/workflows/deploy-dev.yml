@@ -1,0 +1,54 @@
+name: Deploy Dev
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+env:
+  AWS_REGION: ap-southeast-1
+  ENVIRONMENT: dev
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  check-ci:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check CI status
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Get the latest commit SHA from the triggering event
+            const { data: { commit: { sha } } } = await github.rest.repos.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            
+            // Get the commit status for the latest commit
+            const { data: status } = await github.rest.repos.getCombinedStatusForRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: sha
+            });
+            
+            // Check if all required statuses are successful
+            const requiredChecks = ['backend-lint', 'backend-test', 'backend-security', 'frontend-lint', 'frontend-test', 'frontend-build', 'terraform-validate'];
+            const successfulChecks = status.statuses
+              .filter(check => requiredChecks.includes(check.context) && check.state === 'success');
+            
+            if (successfulChecks.length !== requiredChecks.length) {
+              console.log(`Not all required checks have passed. Expected: ${requiredChecks.length}, Got: ${successfulChecks.length}`);
+              console.log('Failing checks:');
+              requiredChecks.forEach(check => {
+                const checkResult = status.statuses.find(s => s.context === check);
+                if (!checkResult || checkResult.state !== 'success') {
+                  console.log(`  - ${check}: ${checkResult ? checkResult.state : 'not found'}`);
+                }
+              });
+              
+              core.setFailed('Not all required CI checks have passed');
+            } else {
+              console.log('All required CI checks have passed');
+            }
