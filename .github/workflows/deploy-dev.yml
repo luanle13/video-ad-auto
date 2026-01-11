@@ -98,3 +98,45 @@ jobs:
               --s3-bucket ${{ secrets.ARTIFACTS_BUCKET }} \
               --s3-key lambda-${{ github.sha }}.zip
           done
+
+  deploy-infra:
+    needs: check-ci
+    runs-on: ubuntu-latest
+    environment: development
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionsRole
+          role-session-name: GitHubActionSession
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: latest
+          terraform_wrapper: false
+
+      - name: Terraform Init
+        run: |
+          cd infra
+          terraform init -backend-config="bucket=${{ secrets.TERRAFORM_STATE_BUCKET }}" -backend-config="key=dev/terraform.tfstate" -backend-config="region=${{ env.AWS_REGION }}"
+
+      - name: Terraform Plan
+        run: |
+          cd infra
+          terraform plan -var-file=environments/dev.tfvars -out=tfplan
+
+      - name: Store plan as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: terraform-plan
+          path: infra/tfplan
+
+      - name: Terraform Apply
+        run: |
+          cd infra
+          terraform apply tfplan
