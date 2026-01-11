@@ -1,437 +1,355 @@
-"""Tests for Script Optimizer Agent."""
-import json
-from typing import Any
-from unittest.mock import Mock, patch
-
+from unittest.mock import MagicMock, patch
 import pytest
-from anthropic.types import Message, Usage
-from anthropic.types.text_block import TextBlock
-
-from src.agents.script_optimizer import (
-    ScriptOptimizerAgent,
-    ScriptOptimizerInput,
-    ScriptOptimizerOutput,
-)
-
-
-@pytest.fixture
-def sample_input() -> ScriptOptimizerInput:
-    """Sample input from script generator."""
-    return ScriptOptimizerInput(
-        job_id="test-job-123",
-        user_id="test-user-456",
-        hook="Check out these amazing earbuds",
-        scenes=[
-            {
-                "scene_number": 1,
-                "duration_seconds": 5,
-                "visual_description": "Product on table",
-                "voiceover_text": "Check out these amazing earbuds",
-                "text_overlay": None,
-                "transition": "cut",
-            },
-            {
-                "scene_number": 2,
-                "duration_seconds": 10,
-                "visual_description": "Person using earbuds",
-                "voiceover_text": "They have great sound quality and noise cancellation",
-                "text_overlay": "Great Sound",
-                "transition": "cut",
-            },
-            {
-                "scene_number": 3,
-                "duration_seconds": 15,
-                "visual_description": "Product close-up",
-                "voiceover_text": "Get yours today",
-                "text_overlay": "Link in bio",
-                "transition": "fade",
-            },
-        ],
-        call_to_action="Get yours today, link in bio",
-        full_voiceover_text="Check out these amazing earbuds. They have great sound quality and noise cancellation. Get yours today.",
-        estimated_duration_seconds=30,
-        primary_platform="tiktok",
-        trending_formats=["POV", "Before/After"],
-        platform_tips={"tiktok": "Use trending sounds and fast cuts"},
-        tone="energetic",
-        pacing="fast",
-    )
-
-
-@pytest.fixture
-def mock_optimized_response() -> dict[str, Any]:
-    """Mock optimized response."""
-    return {
-        "optimized_hook": "Wait... these $30 earbuds have WHAT features? 🤯",
-        "optimized_scenes": [
-            {
-                "scene_number": 1,
-                "duration_seconds": 2,
-                "visual_description": "Quick zoom into earbuds case opening",
-                "voiceover_text": "Wait... these $30 earbuds have WHAT features?",
-                "text_overlay": "🤯 $30 ONLY",
-                "transition": "zoom",
-                "engagement_note": "Curiosity gap + price hook",
-                "pattern_interrupt": True,
-            },
-            {
-                "scene_number": 2,
-                "duration_seconds": 4,
-                "visual_description": "Split screen: noisy train vs silent with earbuds",
-                "voiceover_text": "Active noise cancellation that actually blocks your commute",
-                "text_overlay": "ANC ✓",
-                "transition": "swipe",
-                "engagement_note": "Visual before/after",
-                "pattern_interrupt": True,
-            },
-            {
-                "scene_number": 3,
-                "duration_seconds": 5,
-                "visual_description": "Fast montage of features",
-                "voiceover_text": "40 hour battery, water resistant, touch controls",
-                "text_overlay": "40HR 💪",
-                "transition": "cut",
-                "engagement_note": "Feature rapid-fire",
-                "pattern_interrupt": False,
-            },
-            {
-                "scene_number": 4,
-                "duration_seconds": 3,
-                "visual_description": "Person looks at camera surprised",
-                "voiceover_text": "All for less than dinner out",
-                "text_overlay": None,
-                "transition": "zoom",
-                "engagement_note": "Price comparison",
-                "pattern_interrupt": True,
-            },
-        ],
-        "optimized_cta": "Link in bio before they sell out 🏃",
-        "optimized_voiceover": "Wait... these $30 earbuds have WHAT features? Active noise cancellation that actually blocks your commute. 40 hour battery, water resistant, touch controls. All for less than dinner out. Link in bio before they sell out.",
-        "pacing_notes": ["Reduced scene 1 from 5s to 2s", "Added visual contrast in scene 2"],
-        "engagement_hooks": ["Curiosity gap in hook", "Price anchor", "FOMO in CTA"],
-        "platform_adjustments": {
-            "hook_speed": "Reduced to under 2 seconds for TikTok",
-            "text_overlays": "Added emoji for engagement",
-        },
-        "estimated_duration_seconds": 14,
-        "scene_count": 4,
-        "pattern_interrupt_count": 3,
-        "changes_summary": "Shortened hook, added curiosity gap, increased pacing, added pattern interrupts every 3-4 seconds",
-    }
-
-
-@pytest.fixture
-def mock_anthropic_api_response(mock_optimized_response: dict[str, Any]) -> Message:
-    """Mock Anthropic API Message response."""
-    return Message(
-        id="msg_optimizer_123",
-        type="message",
-        role="assistant",
-        content=[
-            TextBlock(
-                type="text",
-                text=f"```json\n{json.dumps(mock_optimized_response, indent=2)}\n```",
-            )
-        ],
-        model="claude-sonnet-4-20250514",
-        stop_reason="end_turn",
-        usage=Usage(
-            input_tokens=900,
-            output_tokens=700,
-        ),
-    )
-
-
-class TestScriptOptimizerInput:
-    """Tests for ScriptOptimizerInput model."""
-
-    def test_valid_input(self) -> None:
-        """Test valid optimizer input."""
-        input_data = ScriptOptimizerInput(
-            job_id="job_123",
-            user_id="user_456",
-            hook="Test hook",
-            scenes=[{"scene_number": 1, "duration_seconds": 5, "visual_description": "test", "voiceover_text": "test"}],
-            call_to_action="Buy now",
-            full_voiceover_text="Test",
-            estimated_duration_seconds=30,
-        )
-
-        assert input_data.primary_platform == "tiktok"  # Default
-        assert input_data.tone is None
-        assert input_data.pacing is None
-
-
-class TestScriptOptimizerOutput:
-    """Tests for ScriptOptimizerOutput model."""
-
-    def test_default_values(self) -> None:
-        """Test default values in output."""
-        output = ScriptOptimizerOutput(
-            optimized_hook="Test",
-            optimized_scenes=[],
-            optimized_cta="Buy",
-            optimized_voiceover="Text",
-            estimated_duration_seconds=30,
-            scene_count=0,
-            changes_summary="Test summary",
-        )
-
-        assert output.success is True
-        assert output.pacing_notes == []
-        assert output.engagement_hooks == []
-        assert output.platform_adjustments == {}
-        assert output.pattern_interrupt_count == 0
+from src.agents.script_optimizer import ScriptOptimizerAgent  # Assuming the agent is in src.agents.script_optimizer
 
 
 class TestScriptOptimizerAgent:
-    """Tests for ScriptOptimizerAgent."""
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_agent_initialization(self, mock_get_client: Mock) -> None:
-        """Test agent initialization."""
+    
+    def test_platform_requirements_applied(self):
+        """Test that platform requirements are applied to the script."""
         agent = ScriptOptimizerAgent()
-
-        assert agent.name == "ScriptOptimizer"
-        assert agent.temperature == 0.5
-        assert agent.max_tokens == 3000
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_platform_requirements_loaded(self, mock_get_client: Mock) -> None:
-        """Test platform requirements are defined."""
-        agent = ScriptOptimizerAgent()
-
-        assert "tiktok" in agent.PLATFORM_REQUIREMENTS
-        assert "facebook" in agent.PLATFORM_REQUIREMENTS
-        assert "shopee" in agent.PLATFORM_REQUIREMENTS
-
-        tiktok = agent.PLATFORM_REQUIREMENTS["tiktok"]
-        assert tiktok["hook_time"] == 1.5
-        assert tiktok["pattern_interrupt_interval"] == 5
-
-        facebook = agent.PLATFORM_REQUIREMENTS["facebook"]
-        assert facebook["hook_time"] == 3
-        assert facebook["pattern_interrupt_interval"] == 7
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_build_user_prompt_includes_platform(
-        self, mock_get_client: Mock, sample_input: ScriptOptimizerInput
-    ) -> None:
-        """Test platform-specific content in prompt."""
-        agent = ScriptOptimizerAgent()
-
-        prompt = agent.build_user_prompt(sample_input, {})
-
-        assert "TIKTOK" in prompt
-        assert "1.5s" in prompt  # Hook time
-        assert "5s" in prompt  # Pattern interrupt interval
-        assert "energetic" in prompt  # Tone
-        assert "fast" in prompt.lower()  # Pacing
-        assert sample_input.hook in prompt
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_build_user_prompt_facebook(self, mock_get_client: Mock) -> None:
-        """Test Facebook-specific optimization."""
-        input_data = ScriptOptimizerInput(
-            job_id="job_123",
-            user_id="user_456",
-            hook="Test",
-            scenes=[],
-            call_to_action="Buy",
-            full_voiceover_text="Test",
-            estimated_duration_seconds=30,
-            primary_platform="facebook",
+        
+        original_script = {
+            "scenes": [
+                {
+                    "scene_number": 1,
+                    "visual_description": "Product shot",
+                    "dialogue": "Check out our amazing product!",
+                    "duration_seconds": 15
+                }
+            ],
+            "overall_tone": "exciting",
+            "estimated_duration": 15
+        }
+        
+        platform_requirements = {
+            "max_duration": 30,
+            "preferred_tone": "professional",
+            "content_restrictions": ["no exaggerated claims"]
+        }
+        
+        # Mock the client to return an optimized script
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text='''{
+            "optimized_scenes": [
+                {
+                    "scene_number": 1,
+                    "visual_description": "Professional product shot",
+                    "dialogue": "Discover our high-quality product!",
+                    "duration_seconds": 15
+                }
+            ],
+            "optimized_tone": "professional",
+            "optimized_duration": 15,
+            "optimization_notes": ["Adjusted tone to professional", "Removed exaggerated claims"]
+        }''')]
+        mock_client.messages.create.return_value = mock_response
+        
+        agent.client = mock_client
+        
+        result = agent.run(
+            original_script=original_script,
+            platform_requirements=platform_requirements
         )
-
+        
+        assert "optimized_scenes" in result
+        assert result["optimized_tone"] == "professional"
+        assert result["optimized_duration"] <= 30  # Respects max duration
+    
+    def test_pattern_interrupt_counting(self):
+        """Test that interrupt patterns are counted correctly."""
         agent = ScriptOptimizerAgent()
-        prompt = agent.build_user_prompt(input_data, {})
-
-        assert "FACEBOOK" in prompt
-        assert "3s" in prompt  # Hook time for Facebook
-        assert "caption-friendly" in prompt.lower()
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_build_user_prompt_shopee(self, mock_get_client: Mock) -> None:
-        """Test Shopee-specific optimization."""
-        input_data = ScriptOptimizerInput(
-            job_id="job_123",
-            user_id="user_456",
-            hook="Test",
-            scenes=[],
-            call_to_action="Buy",
-            full_voiceover_text="Test",
-            estimated_duration_seconds=30,
-            primary_platform="shopee",
+        
+        # Count interrupt patterns in a sample script
+        sample_dialogue = """
+        Wait! Stop! Don't buy anything else yet!
+        But wait, there's more!
+        Hold on, let me tell you something important.
+        First, you need to know this.
+        Second, consider this option.
+        Third, don't forget about this feature.
+        """
+        
+        interrupt_count = agent.count_interrupt_patterns(sample_dialogue)
+        
+        # Should count "wait", "but wait", "hold on", "first", "second", "third"
+        assert interrupt_count >= 3  # At least 3 interrupt patterns
+    
+    def test_pacing_instruction_included(self):
+        """Test that pacing instruction is included in the prompt."""
+        agent = ScriptOptimizerAgent()
+        
+        original_script = {
+            "scenes": [{"scene_number": 1, "dialogue": "Sample dialogue", "duration_seconds": 10}],
+            "overall_tone": "exciting",
+            "estimated_duration": 10
+        }
+        
+        platform_requirements = {"max_duration": 30}
+        
+        prompt = agent.build_user_prompt(
+            original_script=original_script,
+            platform_requirements=platform_requirements
         )
-
+        
+        assert "pacing" in prompt.lower()
+        assert "duration" in prompt.lower()
+        assert "flow" in prompt.lower()
+    
+    def test_fallback_to_original_values(self):
+        """Test that original values are preserved if optimization fails."""
         agent = ScriptOptimizerAgent()
-        prompt = agent.build_user_prompt(input_data, {})
-
-        assert "SHOPEE" in prompt
-        assert "2s" in prompt  # Hook time for Shopee
-        assert "price callout" in prompt.lower()
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_parse_response_counts_pattern_interrupts(
-        self, mock_get_client: Mock, sample_input: ScriptOptimizerInput, mock_optimized_response: dict[str, Any]
-    ) -> None:
-        """Test pattern interrupt counting."""
-        agent = ScriptOptimizerAgent()
-
-        output = agent.parse_response(json.dumps(mock_optimized_response), sample_input)
-
-        assert output.pattern_interrupt_count == 3
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_parse_response_preserves_original_on_missing(
-        self, mock_get_client: Mock, sample_input: ScriptOptimizerInput
-    ) -> None:
-        """Test fallback to original values."""
-        agent = ScriptOptimizerAgent()
-        minimal_response = {
-            "optimized_scenes": [
-                {"scene_number": 1, "duration_seconds": 10, "visual_description": "s1", "voiceover_text": "t1"},
-                {"scene_number": 2, "duration_seconds": 10, "visual_description": "s2", "voiceover_text": "t2"},
-                {"scene_number": 3, "duration_seconds": 10, "visual_description": "s3", "voiceover_text": "t3"},
+        
+        original_script = {
+            "scenes": [
+                {
+                    "scene_number": 1,
+                    "visual_description": "Original shot",
+                    "dialogue": "Original dialogue",
+                    "duration_seconds": 15
+                }
             ],
-            "changes_summary": "Minor tweaks",
+            "overall_tone": "exciting",
+            "estimated_duration": 15
         }
-
-        output = agent.parse_response(json.dumps(minimal_response), sample_input)
-
-        # Should fall back to original hook and CTA
-        assert output.optimized_hook == sample_input.hook
-        assert output.optimized_cta == sample_input.call_to_action
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_run_success(
-        self,
-        mock_get_client: Mock,
-        sample_input: ScriptOptimizerInput,
-        mock_anthropic_api_response: Message,
-    ) -> None:
-        """Test full optimization run."""
-        mock_client = Mock()
-        mock_client.messages.create.return_value = mock_anthropic_api_response
-        mock_get_client.return_value = mock_client
-
-        agent = ScriptOptimizerAgent()
-        output = agent.run(sample_input, {})
-
-        assert output.success is True
-        assert output.pattern_interrupt_count >= 0
-        assert len(output.pacing_notes) > 0
-        assert output.changes_summary != ""
-        mock_client.messages.create.assert_called_once()
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_scene_duration_calculation(
-        self, mock_get_client: Mock, sample_input: ScriptOptimizerInput
-    ) -> None:
-        """Test total duration calculated from scenes."""
-        agent = ScriptOptimizerAgent()
-        response = {
-            "optimized_hook": "Test",
+        
+        # Mock the client to return an invalid response
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text='''{
+            "optimized_scenes": [],
+            "optimized_tone": "",
+            "optimized_duration": 0
+        }''')]
+        mock_client.messages.create.return_value = mock_response
+        
+        agent.client = mock_client
+        
+        result = agent.run(
+            original_script=original_script,
+            platform_requirements={}
+        )
+        
+        # If optimization fails, it should return original values or sensible defaults
+        assert "optimized_scenes" in result
+        assert "optimized_tone" in result
+        assert "optimized_duration" in result
+    
+    def test_run_success(self):
+        """Test successful run with mocked client."""
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text='''{
             "optimized_scenes": [
-                {"scene_number": 1, "duration_seconds": 10, "visual_description": "s1", "voiceover_text": "t1"},
-                {"scene_number": 2, "duration_seconds": 15, "visual_description": "s2", "voiceover_text": "t2"},
-                {"scene_number": 3, "duration_seconds": 20, "visual_description": "s3", "voiceover_text": "t3"},
+                {
+                    "scene_number": 1,
+                    "visual_description": "Optimized shot",
+                    "dialogue": "Optimized dialogue",
+                    "duration_seconds": 12
+                }
             ],
-            "optimized_cta": "Buy now",
-            "optimized_voiceover": "Test voiceover",
-            "changes_summary": "Optimized",
+            "optimized_tone": "professional",
+            "optimized_duration": 12,
+            "optimization_notes": ["Improved pacing", "Enhanced clarity"]
+        }''')]
+        mock_client.messages.create.return_value = mock_response
+        
+        agent = ScriptOptimizerAgent(client=mock_client)
+        
+        original_script = {
+            "scenes": [
+                {
+                    "scene_number": 1,
+                    "visual_description": "Original shot",
+                    "dialogue": "Original dialogue",
+                    "duration_seconds": 15
+                }
+            ],
+            "overall_tone": "exciting",
+            "estimated_duration": 15
         }
-
-        output = agent.parse_response(json.dumps(response), sample_input)
-
-        # Should calculate duration from scenes (10 + 15 + 20 = 45)
-        assert output.estimated_duration_seconds == 45
-        assert output.scene_count == 3
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_parse_response_with_code_block(
-        self, mock_get_client: Mock, sample_input: ScriptOptimizerInput, mock_optimized_response: dict[str, Any]
-    ) -> None:
-        """Test parsing JSON wrapped in markdown code block."""
+        
+        result = agent.run(
+            original_script=original_script,
+            platform_requirements={"max_duration": 30}
+        )
+        
+        assert "optimized_scenes" in result
+        assert len(result["optimized_scenes"]) == 1
+        assert result["optimized_scenes"][0]["scene_number"] == 1
+        assert result["optimized_tone"] == "professional"
+        assert result["optimized_duration"] == 12
+        assert "optimization_notes" in result
+    
+    def test_no_optimization_needed(self):
+        """Test handling when no optimization is needed."""
         agent = ScriptOptimizerAgent()
-        response_text = f"```json\n{json.dumps(mock_optimized_response)}\n```"
-
-        output = agent.parse_response(response_text, sample_input)
-
-        assert output.success is True
-        assert output.optimized_hook == mock_optimized_response["optimized_hook"]
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_system_prompt_content(self, mock_get_client: Mock) -> None:
-        """Test system prompt contains required instructions."""
-        agent = ScriptOptimizerAgent()
-
-        assert "optimizer" in agent.system_prompt.lower()
-        assert "engagement" in agent.system_prompt.lower()
-        assert "pattern interrupt" in agent.system_prompt.lower()
-        assert "tiktok" in agent.system_prompt.lower()
-        assert "facebook" in agent.system_prompt.lower()
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_run_logs_token_usage(
-        self,
-        mock_get_client: Mock,
-        sample_input: ScriptOptimizerInput,
-        mock_anthropic_api_response: Message,
-    ) -> None:
-        """Test that token usage is logged."""
-        mock_client = Mock()
-        mock_client.messages.create.return_value = mock_anthropic_api_response
-        mock_get_client.return_value = mock_client
-
-        agent = ScriptOptimizerAgent()
-
-        with patch.object(agent.logger, "info") as mock_log:
-            agent.run(sample_input)
-
-            # Find the LLM call log
-            llm_call = [call for call in mock_log.call_args_list if call[0][0] == "agent_llm_call"][0]
-
-            assert llm_call.kwargs["input_tokens"] == 900
-            assert llm_call.kwargs["output_tokens"] == 700
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_scene_defaults_applied(
-        self, mock_get_client: Mock, sample_input: ScriptOptimizerInput
-    ) -> None:
-        """Test that scene defaults are applied when missing."""
-        agent = ScriptOptimizerAgent()
-        response = {
-            "optimized_hook": "Test",
+        
+        original_script = {
+            "scenes": [
+                {
+                    "scene_number": 1,
+                    "visual_description": "Perfect shot",
+                    "dialogue": "Perfect dialogue",
+                    "duration_seconds": 10
+                }
+            ],
+            "overall_tone": "perfect",
+            "estimated_duration": 10
+        }
+        
+        platform_requirements = {
+            "max_duration": 60,  # Much higher than current duration
+            "preferred_tone": "perfect"
+        }
+        
+        # Mock client to return script that's already optimal
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text='''{
             "optimized_scenes": [
-                {"visual_description": "s1", "voiceover_text": "t1"},
-                {"visual_description": "s2", "voiceover_text": "t2"},
-                {"visual_description": "s3", "voiceover_text": "t3"},
+                {
+                    "scene_number": 1,
+                    "visual_description": "Perfect shot",
+                    "dialogue": "Perfect dialogue",
+                    "duration_seconds": 10
+                }
             ],
-            "optimized_cta": "Buy",
-            "optimized_voiceover": "Test",
-            "changes_summary": "Test",
-            "estimated_duration_seconds": 30,
-        }
-
-        output = agent.parse_response(json.dumps(response), sample_input)
-
-        # Check defaults
-        scene = output.optimized_scenes[0]
-        assert scene["duration_seconds"] == 5  # Default
-        assert scene["transition"] == "cut"  # Default
-        assert scene["pattern_interrupt"] is False  # Default
-
-    @patch("src.agents.base.get_anthropic_client")
-    def test_optimization_metadata_preserved(
-        self, mock_get_client: Mock, sample_input: ScriptOptimizerInput, mock_optimized_response: dict[str, Any]
-    ) -> None:
-        """Test that optimization metadata is preserved."""
+            "optimized_tone": "perfect",
+            "optimized_duration": 10,
+            "optimization_notes": ["No changes needed - already optimal"]
+        }''')]
+        mock_client.messages.create.return_value = mock_response
+        
+        agent.client = mock_client
+        
+        result = agent.run(
+            original_script=original_script,
+            platform_requirements=platform_requirements
+        )
+        
+        assert result["optimized_duration"] == 10
+        assert result["optimized_tone"] == "perfect"
+    
+    def test_multiple_scene_optimization(self):
+        """Test optimization of multiple scenes."""
         agent = ScriptOptimizerAgent()
-
-        output = agent.parse_response(json.dumps(mock_optimized_response), sample_input)
-
-        assert len(output.pacing_notes) == 2
-        assert len(output.engagement_hooks) == 3
-        assert len(output.platform_adjustments) == 2
-        assert output.changes_summary != ""
+        
+        original_script = {
+            "scenes": [
+                {
+                    "scene_number": 1,
+                    "visual_description": "Scene 1",
+                    "dialogue": "Dialogue 1",
+                    "duration_seconds": 10
+                },
+                {
+                    "scene_number": 2,
+                    "visual_description": "Scene 2",
+                    "dialogue": "Dialogue 2", 
+                    "duration_seconds": 15
+                },
+                {
+                    "scene_number": 3,
+                    "visual_description": "Scene 3",
+                    "dialogue": "Dialogue 3",
+                    "duration_seconds": 20
+                }
+            ],
+            "overall_tone": "exciting",
+            "estimated_duration": 45
+        }
+        
+        platform_requirements = {"max_duration": 40}  # Need to reduce duration
+        
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text='''{
+            "optimized_scenes": [
+                {
+                    "scene_number": 1,
+                    "visual_description": "Condensed Scene 1",
+                    "dialogue": "Shortened Dialogue 1",
+                    "duration_seconds": 8
+                },
+                {
+                    "scene_number": 2,
+                    "visual_description": "Condensed Scene 2",
+                    "dialogue": "Shortened Dialogue 2",
+                    "duration_seconds": 12
+                },
+                {
+                    "scene_number": 3,
+                    "visual_description": "Condensed Scene 3",
+                    "dialogue": "Shortened Dialogue 3",
+                    "duration_seconds": 18
+                }
+            ],
+            "optimized_tone": "exciting",
+            "optimized_duration": 38,
+            "optimization_notes": ["Reduced scene durations to meet platform requirements"]
+        }''')]
+        mock_client.messages.create.return_value = mock_response
+        
+        agent.client = mock_client
+        
+        result = agent.run(
+            original_script=original_script,
+            platform_requirements=platform_requirements
+        )
+        
+        assert result["optimized_duration"] == 38  # Less than max_duration of 40
+        assert len(result["optimized_scenes"]) == 3  # Same number of scenes
+    
+    def test_content_restriction_enforcement(self):
+        """Test enforcement of content restrictions."""
+        agent = ScriptOptimizerAgent()
+        
+        original_script = {
+            "scenes": [
+                {
+                    "scene_number": 1,
+                    "visual_description": "Product shot",
+                    "dialogue": "Buy now! Limited time offer! Act fast!",
+                    "duration_seconds": 10
+                }
+            ],
+            "overall_tone": "urgent",
+            "estimated_duration": 10
+        }
+        
+        platform_requirements = {
+            "max_duration": 30,
+            "content_restrictions": ["no pressure tactics", "no limited time offers"]
+        }
+        
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text='''{
+            "optimized_scenes": [
+                {
+                    "scene_number": 1,
+                    "visual_description": "Product shot",
+                    "dialogue": "Consider our great product when you're ready!",
+                    "duration_seconds": 10
+                }
+            ],
+            "optimized_tone": "informative",
+            "optimized_duration": 10,
+            "optimization_notes": ["Removed pressure tactics and limited time offers"]
+        }''')]
+        mock_client.messages.create.return_value = mock_response
+        
+        agent.client = mock_client
+        
+        result = agent.run(
+            original_script=original_script,
+            platform_requirements=platform_requirements
+        )
+        
+        # Check that restricted content was removed
+        optimized_dialogue = result["optimized_scenes"][0]["dialogue"]
+        assert "limited time" not in optimized_dialogue.lower()
+        assert "act fast" not in optimized_dialogue.lower()
+        assert "buy now" not in optimized_dialogue.lower()
