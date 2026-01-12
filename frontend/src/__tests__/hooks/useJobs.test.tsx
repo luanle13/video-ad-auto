@@ -2,10 +2,12 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { renderHook, waitFor, act } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-// Define the mock functions at the top level
-const mockGetJobs = vi.fn();
-const mockCreateJob = vi.fn();
-const mockGetJob = vi.fn();
+// Use vi.hoisted to ensure mocks are available during hoisting
+const { mockGetJobs, mockCreateJob, mockGetJob } = vi.hoisted(() => ({
+  mockGetJobs: vi.fn(),
+  mockCreateJob: vi.fn(),
+  mockGetJob: vi.fn(),
+}));
 
 // Mock the API module
 vi.mock('@/api/jobs', () => ({

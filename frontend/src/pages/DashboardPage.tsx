@@ -73,7 +73,7 @@ const DashboardPage: React.FC = () => {
         <div className="p-6">
           {isLoading ? (
             <div className="flex justify-center py-10">
-              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary-500"></div>
+              <div role="status" className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-primary-500"></div>
             </div>
           ) : jobs.length === 0 ? (
             <div className="text-center py-10">

@@ -99,8 +99,8 @@ describe('DashboardPage', () => {
       </QueryClientProvider>
     );
     
-    const createButton = screen.getByRole('button', { name: /create video/i });
-    fireEvent.click(createButton);
+    const createButtons = screen.getAllByRole('button', { name: /create video/i });
+    fireEvent.click(createButtons[0]);
     
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/videos/new');
