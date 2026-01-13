@@ -9,6 +9,7 @@ from src.shared.exceptions import (
     ConflictError,
     ExternalServiceError,
     NotFoundError,
+    RateLimitExceededError,
     ValidationError,
 )
 from src.shared.logging import configure_logging, get_logger
@@ -49,6 +50,7 @@ __all__ = [
     "ConflictError",
     "ExternalServiceError",
     "NotFoundError",
+    "RateLimitExceededError",
     "ValidationError",
     # Logging
     "configure_logging",

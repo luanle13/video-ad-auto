@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from mangum import Mangum
 
-from src.api.middleware import SecurityHeadersMiddleware
+from src.api.middleware import RateLimitMiddleware, SecurityHeadersMiddleware
 from src.api.models import ErrorResponse, HealthResponse
 from src.api.routes import auth, credentials, jobs, products
 from src.shared.config import get_settings
@@ -60,6 +60,13 @@ def create_app() -> FastAPI:
 
     # Security headers middleware
     app.add_middleware(SecurityHeadersMiddleware)
+
+    # Rate limiting middleware
+    app.add_middleware(
+        RateLimitMiddleware,
+        requests_per_minute=60,
+        auth_requests_per_minute=10,
+    )
 
     # Exception handlers
     @app.exception_handler(AIVideoPlatformError)

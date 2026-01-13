@@ -69,6 +69,20 @@ class ConflictError(AIVideoPlatformError):
         super().__init__(message, code="CONFLICT")
 
 
+# === Rate Limiting ===
+
+class RateLimitExceededError(AIVideoPlatformError):
+    """Rate limit exceeded."""
+
+    def __init__(self, retry_after_seconds: int = 60) -> None:
+        super().__init__(
+            "Too many requests",
+            code="RATE_LIMIT_EXCEEDED",
+            details={"retry_after_seconds": retry_after_seconds},
+        )
+        self.retry_after_seconds = retry_after_seconds
+
+
 # === Validation Errors ===
 
 class ValidationError(AIVideoPlatformError):
