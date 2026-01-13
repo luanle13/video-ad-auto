@@ -34,10 +34,31 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("application_shutting_down")
 
 
+def _get_cors_origins(settings) -> list[str]:
+    """Get allowed CORS origins based on environment."""
+    # Development origins
+    dev_origins = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ]
+
+    if settings.environment == "dev":
+        return dev_origins
+
+    # Production origins from environment
+    prod_origins = []
+    if settings.frontend_url:
+        prod_origins.append(settings.frontend_url)
+
+    return prod_origins
+
+
 def create_app() -> FastAPI:
     """Create and configure FastAPI application."""
     settings = get_settings()
-    
+
     app = FastAPI(
         title="AI Video Platform API",
         description="API for AI-powered video generation from product images",
@@ -46,16 +67,16 @@ def create_app() -> FastAPI:
         docs_url="/docs" if settings.debug else None,
         redoc_url="/redoc" if settings.debug else None,
     )
-    
-    # CORS middleware
+
+    # CORS middleware - hardened configuration
+    cors_origins = _get_cors_origins(settings)
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"] if settings.debug else [
-            "https://your-domain.com",  # TODO: Configure in settings
-        ],
+        allow_origins=cors_origins,
         allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+        allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
+        max_age=600,  # Cache preflight requests for 10 minutes
     )
 
     # Security headers middleware

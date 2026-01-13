@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     # Environment
     environment: Literal["dev", "prod"] = "dev"
     debug: bool = False
+
+    # Frontend
+    frontend_url: str = Field(
+        default="",
+        description="Production frontend URL for CORS",
+    )
     
     # AWS
     aws_region: str = "ap-southeast-1"

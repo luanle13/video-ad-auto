@@ -2,7 +2,7 @@
 import pytest
 from fastapi.testclient import TestClient
 
-from src.api.main import create_app, _get_status_code
+from src.api.main import create_app, _get_status_code, _get_cors_origins
 from src.api.models import HealthResponse
 from src.shared.exceptions import (
     AIVideoPlatformError,
@@ -34,23 +34,92 @@ def test_health_check(client):
 
 
 def test_cors_configuration(client):
-    """Test that CORS headers are set correctly."""
-    # Make an OPTIONS request to check CORS preflight
+    """Test that CORS headers are set correctly for allowed origin."""
+    # Make a request with an allowed origin
+    response = client.get(
+        "/health",
+        headers={"Origin": "http://localhost:3000"},
+    )
+
+    assert response.status_code == 200
+    # In dev mode, localhost:3000 should be allowed
+    assert response.headers.get("Access-Control-Allow-Origin") == "http://localhost:3000"
+    assert response.headers.get("Access-Control-Allow-Credentials") == "true"
+
+
+def test_cors_preflight_request(client):
+    """Test CORS preflight (OPTIONS) request."""
     response = client.options(
         "/health",
         headers={
+            "Origin": "http://localhost:3000",
             "Access-Control-Request-Method": "GET",
-            "Access-Control-Request-Headers": "X-Requested-With",
-            "Origin": "http://localhost:3000"
-        }
+            "Access-Control-Request-Headers": "Authorization, Content-Type",
+        },
     )
-    
-    # Check that CORS headers are present (even if they return 404 for OPTIONS)
-    # For a GET request, check if CORS headers are set
-    response = client.get("/health")
+
+    # Preflight should succeed
     assert response.status_code == 200
-    # Note: In debug mode, CORS allows all origins, so this test assumes debug=False
-    # In practice, the CORS headers would be checked differently depending on settings
+    assert response.headers.get("Access-Control-Allow-Origin") == "http://localhost:3000"
+    assert "GET" in response.headers.get("Access-Control-Allow-Methods", "")
+    assert response.headers.get("Access-Control-Max-Age") == "600"
+
+
+def test_cors_blocked_origin(client):
+    """Test that unauthorized origins are blocked."""
+    response = client.get(
+        "/health",
+        headers={"Origin": "http://evil-site.com"},
+    )
+
+    # Request should succeed but without CORS headers
+    assert response.status_code == 200
+    assert response.headers.get("Access-Control-Allow-Origin") is None
+
+
+def test_get_cors_origins_dev_environment():
+    """Test CORS origins for dev environment."""
+    from unittest.mock import MagicMock
+
+    settings = MagicMock()
+    settings.environment = "dev"
+    settings.frontend_url = ""
+
+    origins = _get_cors_origins(settings)
+
+    assert "http://localhost:3000" in origins
+    assert "http://localhost:5173" in origins
+    assert "http://127.0.0.1:3000" in origins
+    assert "http://127.0.0.1:5173" in origins
+    assert len(origins) == 4
+
+
+def test_get_cors_origins_prod_environment():
+    """Test CORS origins for prod environment."""
+    from unittest.mock import MagicMock
+
+    settings = MagicMock()
+    settings.environment = "prod"
+    settings.frontend_url = "https://my-app.example.com"
+
+    origins = _get_cors_origins(settings)
+
+    assert origins == ["https://my-app.example.com"]
+    # Dev origins should not be included
+    assert "http://localhost:3000" not in origins
+
+
+def test_get_cors_origins_prod_no_frontend_url():
+    """Test CORS origins for prod environment without frontend URL."""
+    from unittest.mock import MagicMock
+
+    settings = MagicMock()
+    settings.environment = "prod"
+    settings.frontend_url = ""
+
+    origins = _get_cors_origins(settings)
+
+    assert origins == []
 
 
 def test_get_status_code_mapping():
