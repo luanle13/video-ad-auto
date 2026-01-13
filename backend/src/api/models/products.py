@@ -1,11 +1,24 @@
 """Product models."""
-from pydantic import BaseModel, Field
+from typing import Annotated
+
+from pydantic import AfterValidator, BaseModel, Field
+
+from src.shared.validators import sanitize_html, validate_safe_filename
+
+# Custom types with HTML sanitization
+SanitizedStr = Annotated[str, AfterValidator(sanitize_html)]
+SafeFilenameStr = Annotated[str, AfterValidator(validate_safe_filename)]
 
 
 class ImageUploadRequest(BaseModel):
     """Request for presigned upload URL."""
-    
-    filename: str
+
+    filename: SafeFilenameStr = Field(
+        ...,
+        min_length=1,
+        max_length=255,
+        description="Filename with valid image extension",
+    )
     content_type: str = Field(
         ...,
         pattern=r"^image/(jpeg|png|webp)$",
@@ -15,7 +28,7 @@ class ImageUploadRequest(BaseModel):
 
 class ImageUploadResponse(BaseModel):
     """Presigned upload URL response."""
-    
+
     key: str
     url: str
     fields: dict[str, str]
@@ -23,19 +36,24 @@ class ImageUploadResponse(BaseModel):
 
 class CreateProductRequest(BaseModel):
     """Create product request."""
-    
-    title: str = Field(..., min_length=1, max_length=200)
-    description: str = Field(..., min_length=1, max_length=2000)
-    price: str = Field(..., pattern=r"^\d+(\.\d{1,2})?$", description="Price as string, e.g., '99.99'")
+
+    title: SanitizedStr = Field(..., min_length=1, max_length=200)
+    description: SanitizedStr = Field(..., min_length=1, max_length=2000)
+    price: str = Field(
+        ...,
+        pattern=r"^\d+(\.\d{1,2})?$",
+        max_length=50,
+        description="Price as string, e.g., '99.99'",
+    )
     image_keys: list[str] = Field(..., min_length=1, max_length=5)
 
 
 class UpdateProductRequest(BaseModel):
     """Update product request."""
-    
-    title: str | None = Field(None, min_length=1, max_length=200)
-    description: str | None = Field(None, min_length=1, max_length=2000)
-    price: str | None = Field(None, pattern=r"^\d+(\.\d{1,2})?$")
+
+    title: SanitizedStr | None = Field(None, min_length=1, max_length=200)
+    description: SanitizedStr | None = Field(None, min_length=1, max_length=2000)
+    price: str | None = Field(None, pattern=r"^\d+(\.\d{1,2})?$", max_length=50)
 
 
 class ProductResponse(BaseModel):

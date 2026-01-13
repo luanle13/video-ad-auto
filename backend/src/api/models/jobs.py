@@ -1,13 +1,19 @@
 """Job models."""
 from enum import Enum
-from typing import Any
+from typing import Annotated, Any
 
-from pydantic import BaseModel, Field
+from pydantic import AfterValidator, BaseModel, Field
+
+from src.shared.validators import sanitize_for_prompt, validate_uuid_format
+
+# Custom types with validation
+UUIDStr = Annotated[str, AfterValidator(validate_uuid_format)]
+PromptSafeStr = Annotated[str, AfterValidator(sanitize_for_prompt)]
 
 
 class JobStatus(str, Enum):
     """Job status enum."""
-    
+
     PENDING = "PENDING"
     PROCESSING = "PROCESSING"
     ANALYZING = "ANALYZING"
@@ -20,24 +26,45 @@ class JobStatus(str, Enum):
 
 class JobAdjustments(BaseModel):
     """Video generation adjustments."""
-    
-    background_style: str | None = Field(None, description="e.g., 'minimal', 'vibrant', 'professional'")
-    tone: str | None = Field(None, description="e.g., 'energetic', 'calm', 'humorous'")
-    emphasis: str | None = Field(None, description="Feature to emphasize")
-    duration_preference: int | None = Field(None, ge=30, le=60, description="Target duration in seconds")
-    additional_instructions: str | None = Field(None, max_length=500)
+
+    background_style: str | None = Field(
+        None,
+        max_length=50,
+        description="e.g., 'minimal', 'vibrant', 'professional'",
+    )
+    tone: str | None = Field(
+        None,
+        max_length=50,
+        description="e.g., 'energetic', 'calm', 'humorous'",
+    )
+    emphasis: str | None = Field(
+        None,
+        max_length=100,
+        description="Feature to emphasize",
+    )
+    duration_preference: int | None = Field(
+        None,
+        ge=30,
+        le=60,
+        description="Target duration in seconds",
+    )
+    additional_instructions: PromptSafeStr | None = Field(
+        None,
+        max_length=500,
+        description="Additional instructions for video generation",
+    )
 
 
 class CreateJobRequest(BaseModel):
     """Create video generation job request."""
-    
-    product_id: str
+
+    product_id: UUIDStr = Field(..., description="Product UUID")
     adjustments: JobAdjustments | None = None
 
 
 class RegenerateJobRequest(BaseModel):
     """Regenerate video with adjustments."""
-    
+
     adjustments: JobAdjustments
 
 

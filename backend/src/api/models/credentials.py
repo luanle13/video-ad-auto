@@ -4,24 +4,34 @@ from pydantic import BaseModel, Field
 
 class TikTokCredentials(BaseModel):
     """TikTok API credentials."""
-    
-    access_token: str = Field(..., min_length=1)
-    # Add other fields as needed by TikTok API
+
+    access_token: str = Field(..., min_length=1, max_length=2048)
 
 
 class ShopeeCredentials(BaseModel):
     """Shopee Vietnam credentials."""
-    
-    shop_id: str
-    access_token: str = Field(..., min_length=1)
-    # Add other fields as needed
+
+    shop_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        pattern=r"^\d+$",
+        description="Numeric shop ID",
+    )
+    access_token: str = Field(..., min_length=1, max_length=2048)
 
 
 class FacebookCredentials(BaseModel):
     """Facebook/Meta credentials."""
-    
-    page_id: str
-    access_token: str = Field(..., min_length=1)
+
+    page_id: str = Field(
+        ...,
+        min_length=1,
+        max_length=50,
+        pattern=r"^\d+$",
+        description="Numeric page ID",
+    )
+    access_token: str = Field(..., min_length=1, max_length=2048)
 
 
 class PlatformCredentialsRequest(BaseModel):
