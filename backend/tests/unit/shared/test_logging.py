@@ -8,6 +8,7 @@ import structlog
 
 from src.shared.config import Settings
 from src.shared.logging import (
+    SanitizingJSONRenderer,
     add_environment,
     configure_logging,
     get_logger,
@@ -16,6 +17,7 @@ from src.shared.logging import (
     mask_secret,
     mask_token,
     sanitize_log_data,
+    sanitize_log_string,
     sanitize_value,
 )
 
@@ -353,3 +355,145 @@ class TestSanitizationIntegration:
             for record in caplog.records:
                 msg = record.getMessage()
                 assert "eyJ" not in msg
+
+
+class TestSanitizeLogString:
+    """Tests for sanitize_log_string function (JSON string sanitization)."""
+
+    def test_sanitizes_password_in_json(self):
+        """Test that password fields in JSON are sanitized."""
+        json_str = '{"username": "user", "password": "secret123"}'
+        result = sanitize_log_string(json_str)
+        assert '"password": "***REDACTED***"' in result
+        assert "secret123" not in result
+
+    def test_sanitizes_api_key_in_json(self):
+        """Test that api_key fields in JSON are sanitized."""
+        json_str = '{"api_key": "sk-abc123xyz"}'
+        result = sanitize_log_string(json_str)
+        assert '"api_key": "***REDACTED***"' in result
+        assert "sk-abc123xyz" not in result
+
+    def test_sanitizes_access_token_in_json(self):
+        """Test that access_token fields in JSON are sanitized."""
+        json_str = '{"access_token": "bearer-token-value"}'
+        result = sanitize_log_string(json_str)
+        assert '"access_token": "***TOKEN***"' in result
+        assert "bearer-token-value" not in result
+
+    def test_sanitizes_refresh_token_in_json(self):
+        """Test that refresh_token fields in JSON are sanitized."""
+        json_str = '{"refresh_token": "refresh-value"}'
+        result = sanitize_log_string(json_str)
+        assert '"refresh_token": "***TOKEN***"' in result
+
+    def test_sanitizes_authorization_header(self):
+        """Test that Authorization headers are sanitized."""
+        json_str = '{"Authorization": "Bearer xyz123"}'
+        result = sanitize_log_string(json_str)
+        assert '"Authorization": "***REDACTED***"' in result
+        assert "xyz123" not in result
+
+    def test_sanitizes_email_anywhere(self):
+        """Test that email addresses anywhere in string are sanitized."""
+        json_str = '{"message": "User user@example.com logged in"}'
+        result = sanitize_log_string(json_str)
+        assert "user@example.com" not in result
+        assert "***@***.***" in result
+
+    def test_sanitizes_jwt_anywhere(self):
+        """Test that JWT tokens anywhere in string are sanitized."""
+        jwt = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIn0.sig"
+        json_str = f'{{"message": "Token: {jwt}"}}'
+        result = sanitize_log_string(json_str)
+        assert "eyJ" not in result
+        assert "***TOKEN***" in result
+
+    def test_sanitizes_api_key_pattern(self):
+        """Test that API key patterns are sanitized."""
+        json_str = '{"message": "Using sk_live_abc123xyz456789012345"}'
+        result = sanitize_log_string(json_str)
+        assert "sk_live" not in result
+        assert "***APIKEY***" in result
+
+    def test_sanitizes_aws_key(self):
+        """Test that AWS access keys are sanitized."""
+        json_str = '{"key": "AKIAIOSFODNN7EXAMPLE"}'
+        result = sanitize_log_string(json_str)
+        assert "AKIA" not in result
+        assert "***AWSKEY***" in result
+
+    def test_sanitizes_secret_fields(self):
+        """Test that secret fields are sanitized."""
+        json_str = '{"secret": "mysecret", "secret_key": "mykey"}'
+        result = sanitize_log_string(json_str)
+        assert '"secret": "***REDACTED***"' in result
+        assert '"secret_key": "***REDACTED***"' in result
+
+    def test_preserves_safe_data(self):
+        """Test that safe data is preserved."""
+        json_str = '{"user_id": "abc-123", "status": "active"}'
+        result = sanitize_log_string(json_str)
+        assert result == json_str
+
+    def test_handles_multiple_sensitive_fields(self):
+        """Test sanitization of multiple sensitive fields."""
+        json_str = '{"password": "pass1", "api_key": "key1", "email": "user@test.com"}'
+        result = sanitize_log_string(json_str)
+        assert "pass1" not in result
+        assert "key1" not in result
+        assert "user@test.com" not in result
+
+    def test_handles_nested_json_string(self):
+        """Test sanitization works with nested-looking JSON."""
+        json_str = '{"data": {"password": "nested-secret"}}'
+        result = sanitize_log_string(json_str)
+        assert "nested-secret" not in result
+
+
+class TestSanitizingJSONRenderer:
+    """Tests for SanitizingJSONRenderer class."""
+
+    def test_renders_to_json(self):
+        """Test that renderer produces JSON output."""
+        renderer = SanitizingJSONRenderer()
+        result = renderer(None, "info", {"event": "test", "key": "value"})
+
+        # Should be valid JSON-ish output
+        assert "event" in result
+        assert "test" in result
+
+    def test_sanitizes_sensitive_data(self):
+        """Test that renderer sanitizes sensitive data."""
+        renderer = SanitizingJSONRenderer()
+        result = renderer(None, "info", {
+            "event": "login",
+            "email": "user@example.com",
+        })
+
+        # Email should be sanitized in final output
+        assert "user@example.com" not in result
+
+    def test_sanitizes_password_in_output(self):
+        """Test that passwords are sanitized in renderer output."""
+        renderer = SanitizingJSONRenderer()
+        # Note: The dictionary-level sanitization should catch this first,
+        # but the string-level sanitization provides defense-in-depth
+        result = renderer(None, "info", {
+            "event": "auth",
+            "password": "secret123",
+        })
+
+        assert "secret123" not in result
+
+    def test_preserves_safe_fields(self):
+        """Test that safe fields are preserved in output."""
+        renderer = SanitizingJSONRenderer()
+        result = renderer(None, "info", {
+            "event": "action",
+            "user_id": "abc-123",
+            "job_id": "job-456",
+        })
+
+        assert "abc-123" in result
+        assert "job-456" in result

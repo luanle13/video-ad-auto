@@ -36,8 +36,61 @@ JWT_PATTERN = re.compile(r"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+"
 API_KEY_PATTERN = re.compile(r"(sk|pk|api)[_-]?[a-zA-Z0-9_-]{20,}")
 AWS_KEY_PATTERN = re.compile(r"AKIA[0-9A-Z]{16}")
 
+# JSON string patterns for sanitizing serialized log output (defense-in-depth)
+# These patterns catch sensitive data in JSON-formatted strings
+JSON_SENSITIVE_PATTERNS: list[tuple[re.Pattern, str]] = [
+    # Password fields in JSON
+    (re.compile(r'"password"\s*:\s*"[^"]*"'), '"password": "***REDACTED***"'),
+    (re.compile(r'"pass"\s*:\s*"[^"]*"'), '"pass": "***REDACTED***"'),
+    # API keys in JSON
+    (re.compile(r'"api_key"\s*:\s*"[^"]*"'), '"api_key": "***REDACTED***"'),
+    (re.compile(r'"apikey"\s*:\s*"[^"]*"'), '"apikey": "***REDACTED***"'),
+    (re.compile(r'"api-key"\s*:\s*"[^"]*"'), '"api-key": "***REDACTED***"'),
+    # Tokens in JSON
+    (re.compile(r'"access_token"\s*:\s*"[^"]*"'), '"access_token": "***TOKEN***"'),
+    (re.compile(r'"refresh_token"\s*:\s*"[^"]*"'), '"refresh_token": "***TOKEN***"'),
+    (re.compile(r'"token"\s*:\s*"[^"]*"'), '"token": "***TOKEN***"'),
+    (re.compile(r'"id_token"\s*:\s*"[^"]*"'), '"id_token": "***TOKEN***"'),
+    # Authorization headers
+    (re.compile(r'"[Aa]uthorization"\s*:\s*"[^"]*"'), '"Authorization": "***REDACTED***"'),
+    # Secrets
+    (re.compile(r'"secret"\s*:\s*"[^"]*"'), '"secret": "***REDACTED***"'),
+    (re.compile(r'"secret_key"\s*:\s*"[^"]*"'), '"secret_key": "***REDACTED***"'),
+    (re.compile(r'"private_key"\s*:\s*"[^"]*"'), '"private_key": "***REDACTED***"'),
+    # Credentials
+    (re.compile(r'"credential"\s*:\s*"[^"]*"'), '"credential": "***REDACTED***"'),
+    (re.compile(r'"credentials"\s*:\s*"[^"]*"'), '"credentials": "***REDACTED***"'),
+    # Email addresses anywhere in string (catch-all)
+    (re.compile(r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}"), "***@***.***"),
+    # JWT tokens anywhere in string
+    (re.compile(r"eyJ[a-zA-Z0-9_-]+\.eyJ[a-zA-Z0-9_-]+\.[a-zA-Z0-9_-]+"), "***TOKEN***"),
+    # API keys with common prefixes
+    (re.compile(r"(sk|pk|api)[_-][a-zA-Z0-9_-]{20,}"), "***APIKEY***"),
+    # AWS access keys
+    (re.compile(r"AKIA[0-9A-Z]{16}"), "***AWSKEY***"),
+]
+
 
 # === Masking Functions ===
+
+
+def sanitize_log_string(data: str) -> str:
+    """
+    Remove sensitive data from serialized log strings.
+
+    This provides defense-in-depth by sanitizing the final JSON output
+    in case any sensitive data slipped through earlier sanitization.
+
+    Args:
+        data: Serialized log string (typically JSON).
+
+    Returns:
+        Sanitized string with sensitive patterns replaced.
+    """
+    result = data
+    for pattern, replacement in JSON_SENSITIVE_PATTERNS:
+        result = pattern.sub(replacement, result)
+    return result
 
 
 def mask_email(email: str) -> str:
@@ -160,6 +213,31 @@ def add_environment(
     return event_dict
 
 
+class SanitizingJSONRenderer:
+    """
+    JSON renderer that applies string-level sanitization after serialization.
+
+    This provides defense-in-depth by catching any sensitive data that might
+    have slipped through the dictionary-level sanitization.
+    """
+
+    def __init__(self, **json_kw: Any) -> None:
+        """Initialize with optional JSON encoder kwargs."""
+        self._json_renderer = structlog.processors.JSONRenderer(**json_kw)
+
+    def __call__(
+        self,
+        logger: logging.Logger,
+        method_name: str,
+        event_dict: dict[str, Any],
+    ) -> str:
+        """Render event dict to JSON and apply string sanitization."""
+        # First, render to JSON using structlog's JSONRenderer
+        json_output = self._json_renderer(logger, method_name, event_dict)
+        # Then apply string-level sanitization as defense-in-depth
+        return sanitize_log_string(json_output)
+
+
 def configure_logging() -> None:
     """Configure structlog for the application."""
     settings = get_settings()
@@ -178,10 +256,10 @@ def configure_logging() -> None:
     ]
     
     if settings.environment == "prod":
-        # JSON for CloudWatch
+        # JSON for CloudWatch with sanitization
         processors = shared_processors + [
             structlog.processors.format_exc_info,
-            structlog.processors.JSONRenderer(),
+            SanitizingJSONRenderer(),  # Custom renderer with string-level sanitization
         ]
     else:
         # Pretty print for local development
