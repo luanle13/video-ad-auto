@@ -11,7 +11,9 @@ from src.shared.exceptions import (
     FileTooLargeError,
     InvalidFileTypeError,
     ExternalServiceError,
-    AnthropicError,
+    OpenAIError,
+    OpenAIRateLimitError,
+    OpenAIContextLengthError,
     KlingError,
     ElevenLabsError,
     JobError,
@@ -42,7 +44,9 @@ def test_exception_inheritance():
     
     # External service errors
     assert issubclass(ExternalServiceError, AIVideoPlatformError)
-    assert issubclass(AnthropicError, ExternalServiceError)
+    assert issubclass(OpenAIError, ExternalServiceError)
+    assert issubclass(OpenAIRateLimitError, OpenAIError)
+    assert issubclass(OpenAIContextLengthError, OpenAIError)
     assert issubclass(KlingError, ExternalServiceError)
     assert issubclass(ElevenLabsError, ExternalServiceError)
     
@@ -104,13 +108,23 @@ def test_code_and_details_attributes():
     external_error = ExternalServiceError("TestService", "Test error")
     assert external_error.code == "EXTERNAL_SERVICE_ERROR"
     assert external_error.details == {"service": "TestService"}
-    
-    anthropic_error = AnthropicError("API error")
-    assert anthropic_error.details == {"service": "Anthropic"}
-    
+
+    # OpenAI errors
+    openai_error = OpenAIError("API error", status_code=500)
+    assert openai_error.details == {"service": "OpenAI"}
+    assert openai_error.status_code == 500
+
+    openai_rate_limit = OpenAIRateLimitError(retry_after=60)
+    assert openai_rate_limit.status_code == 429
+    assert openai_rate_limit.retry_after == 60
+
+    openai_context_length = OpenAIContextLengthError()
+    assert openai_context_length.status_code == 400
+    assert "Context length exceeded" in str(openai_context_length)
+
     kling_error = KlingError("API error")
     assert kling_error.details == {"service": "Kling"}
-    
+
     elevenlabs_error = ElevenLabsError("API error")
     assert elevenlabs_error.details == {"service": "ElevenLabs"}
     

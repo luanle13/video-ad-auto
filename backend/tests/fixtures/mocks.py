@@ -1,19 +1,6 @@
 from unittest.mock import MagicMock, AsyncMock
 
 
-def create_mock_anthropic_response(content: str):
-    """Create mock Anthropic API response."""
-    mock_response = MagicMock()
-    mock_content_block = MagicMock()
-    mock_content_block.text = content
-    mock_response.content = [mock_content_block]
-    mock_usage = MagicMock()
-    mock_usage.input_tokens = 100
-    mock_usage.output_tokens = 200
-    mock_response.usage = mock_usage
-    return mock_response
-
-
 def create_mock_tts_response(audio_data: bytes = b"audio"):
     """Create mock TTS response."""
     mock_response = MagicMock()
