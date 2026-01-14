@@ -44,6 +44,11 @@ def test_default_values():
     assert settings.secrets_kling_key == "ai-video/kling-api-key"
     assert settings.secrets_elevenlabs_key == "ai-video/elevenlabs-api-key"
 
+    # OpenAI configuration defaults
+    assert settings.openai_model == "gpt-4o"
+    assert settings.openai_max_tokens == 4096
+    assert settings.openai_temperature == 0.7
+
     # External API keys defaults
     assert settings.openai_api_key is None
     assert settings.kling_api_key is None

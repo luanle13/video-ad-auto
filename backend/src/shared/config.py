@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     secrets_kling_key: str = "ai-video/kling-api-key"
     secrets_elevenlabs_key: str = "ai-video/elevenlabs-api-key"
 
+    # OpenAI Configuration
+    openai_model: str = "gpt-4o"
+    openai_max_tokens: int = 4096
+    openai_temperature: float = 0.7
+
     # External APIs (loaded from Secrets Manager at runtime, not env)
     # These are placeholders for local development only
     openai_api_key: SecretStr | None = None
