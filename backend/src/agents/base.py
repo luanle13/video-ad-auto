@@ -64,6 +64,17 @@ class BaseAgent(ABC):
         """Parse LLM response into structured output."""
         pass
 
+    def _build_messages(
+        self,
+        input_data: AgentInput,
+        context: dict[str, Any],
+    ) -> list[dict[str, str]]:
+        """Build messages for OpenAI chat completion."""
+        return [
+            {"role": "system", "content": self.system_prompt},
+            {"role": "user", "content": self.build_user_prompt(input_data, context)},
+        ]
+
     def run(self, input_data: AgentInput, context: dict[str, Any] | None = None) -> AgentOutput:
         """
         Execute the agent.
@@ -84,12 +95,7 @@ class BaseAgent(ABC):
         )
 
         try:
-            user_prompt = self.build_user_prompt(input_data, context)
-
-            messages = [
-                {"role": "system", "content": self.system_prompt},
-                {"role": "user", "content": user_prompt},
-            ]
+            messages = self._build_messages(input_data, context)
 
             response = self.client.chat_completion(
                 messages=messages,
