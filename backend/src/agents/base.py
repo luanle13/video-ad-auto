@@ -2,13 +2,13 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from openai import OpenAI
+from openai import APIError, RateLimitError
 from pydantic import BaseModel
 
 from src.shared.config import get_settings
-from src.shared.exceptions import AgentError
+from src.shared.exceptions import AgentError, OpenAIError, OpenAIRateLimitError
 from src.shared.logging import get_logger
-from src.shared.secrets import get_secrets
+from src.shared.openai_client import OpenAIClientWrapper, get_openai_client
 
 logger = get_logger(__name__)
 
@@ -32,25 +32,21 @@ class BaseAgent(ABC):
 
     name: str = "BaseAgent"
     description: str = ""
-    model: str = "gpt-4.1"
+    model: str = "gpt-4o"
     max_tokens: int = 4096
     temperature: float = 0.7
 
     def __init__(self) -> None:
-        settings = get_settings()
-        self.api_key = settings.azure_openai_api_key.get_secret_value() if settings.azure_openai_api_key else None
-        self.endpoint = settings.azure_openai_endpoint
-
-        if not self.api_key or not self.endpoint:
-            raise ValueError("Azure OpenAI API key and endpoint must be set in environment variables.")
-
-        # Configure OpenAI client (v1.x)
-        self._client = OpenAI(
-            base_url=self.endpoint,
-            api_key=self.api_key
-        )
-
+        """Initialize agent with lazy-loaded OpenAI client."""
+        self._client: OpenAIClientWrapper | None = None
         self.logger = get_logger(f"agents.{self.name}")
+
+    @property
+    def client(self) -> OpenAIClientWrapper:
+        """Get OpenAI client (lazy loaded)."""
+        if self._client is None:
+            self._client = get_openai_client()
+        return self._client
 
     @property
     @abstractmethod
@@ -90,14 +86,16 @@ class BaseAgent(ABC):
         try:
             user_prompt = self.build_user_prompt(input_data, context)
 
-            response = self._client.chat.completions.create(
+            messages = [
+                {"role": "system", "content": self.system_prompt},
+                {"role": "user", "content": user_prompt},
+            ]
+
+            response = self.client.chat_completion(
+                messages=messages,
                 model=self.model,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
             )
             response_text = response.choices[0].message.content
 
@@ -120,6 +118,24 @@ class BaseAgent(ABC):
             )
 
             return output
+
+        except RateLimitError as e:
+            self.logger.error(
+                "agent_rate_limit",
+                agent=self.name,
+                job_id=input_data.job_id,
+                error=str(e),
+            )
+            raise OpenAIRateLimitError(str(e))
+
+        except APIError as e:
+            self.logger.error(
+                "agent_api_error",
+                agent=self.name,
+                job_id=input_data.job_id,
+                error=str(e),
+            )
+            raise OpenAIError(str(e), status_code=e.status_code if hasattr(e, "status_code") else None)
 
         except Exception as e:
             self.logger.exception(
