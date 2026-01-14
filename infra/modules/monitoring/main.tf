@@ -4,7 +4,7 @@ resource "aws_sns_topic" "alerts" {
 
   tags = {
     Name        = "${var.name_prefix}-alerts-topic"
-    Environment = "production"  # Using default since environment isn't in variables
+    Environment = "production" # Using default since environment isn't in variables
     Module      = "monitoring"
   }
 }
@@ -25,7 +25,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_error_alarm" {
   evaluation_periods  = "1"
   metric_name         = "Errors"
   namespace           = "AWS/Lambda"
-  period              = "300"  # 5 minutes
+  period              = "300" # 5 minutes
   statistic           = "Sum"
   threshold           = "1"
   alarm_description   = "Alarm when Lambda function ${each.value} has errors"
@@ -58,7 +58,7 @@ resource "aws_cloudwatch_metric_alarm" "lambda_throttles_alarm" {
   evaluation_periods  = "1"
   metric_name         = "Throttles"
   namespace           = "AWS/Lambda"
-  period              = "300"  # 5 minutes
+  period              = "300" # 5 minutes
   statistic           = "Sum"
   threshold           = "1"
   alarm_description   = "Alarm when Lambda function ${each.value} experiences throttling"
@@ -87,9 +87,9 @@ resource "aws_cloudwatch_metric_alarm" "lambda_duration_alarm" {
   evaluation_periods  = "3"
   metric_name         = "Duration"
   namespace           = "AWS/Lambda"
-  period              = "300"  # 5 minutes
+  period              = "300" # 5 minutes
   statistic           = "Average"
-  threshold           = "30000"  # 30 seconds average
+  threshold           = "30000" # 30 seconds average
   alarm_description   = "Alarm when Lambda function ${each.value} has high average duration"
 
   dimensions = {
