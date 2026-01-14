@@ -49,13 +49,13 @@ class Settings(BaseSettings):
     stepfunctions_state_machine_arn: str = ""
     
     # Secrets Manager keys (ARN or name)
-    secrets_anthropic_key: str = "ai-video/anthropic-api-key"
+    secrets_openai_key: str = "ai-video/openai-api-key"
     secrets_kling_key: str = "ai-video/kling-api-key"
     secrets_elevenlabs_key: str = "ai-video/elevenlabs-api-key"
-    
+
     # External APIs (loaded from Secrets Manager at runtime, not env)
     # These are placeholders for local development only
-    anthropic_api_key: SecretStr | None = None
+    openai_api_key: SecretStr | None = None
     kling_api_key: SecretStr | None = None
     elevenlabs_api_key: SecretStr | None = None
     

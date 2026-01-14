@@ -40,12 +40,12 @@ def test_default_values():
     assert settings.stepfunctions_state_machine_arn == ""
     
     # Secrets Manager defaults
-    assert settings.secrets_anthropic_key == "ai-video/anthropic-api-key"
+    assert settings.secrets_openai_key == "ai-video/openai-api-key"
     assert settings.secrets_kling_key == "ai-video/kling-api-key"
     assert settings.secrets_elevenlabs_key == "ai-video/elevenlabs-api-key"
-    
+
     # External API keys defaults
-    assert settings.anthropic_api_key is None
+    assert settings.openai_api_key is None
     assert settings.kling_api_key is None
     assert settings.elevenlabs_api_key is None
     
