@@ -88,12 +88,6 @@ class BaseAgent(ABC):
         """
         context = context or {}
 
-        self.logger.info(
-            "agent_starting",
-            agent=self.name,
-            job_id=input_data.job_id,
-        )
-
         try:
             messages = self._build_messages(input_data, context)
 
@@ -102,55 +96,24 @@ class BaseAgent(ABC):
                 model=self.model,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
+                response_format={"type": "json_object"},
             )
+
             response_text = response.choices[0].message.content
 
-            # Log token usage for cost monitoring
             self.logger.info(
-                "agent_llm_call",
+                "agent_run_complete",
                 agent=self.name,
-                job_id=input_data.job_id,
-                input_tokens=response.usage.prompt_tokens,
-                output_tokens=response.usage.completion_tokens,
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
             )
 
-            output = self.parse_response(response_text, input_data)
-
-            self.logger.info(
-                "agent_completed",
-                agent=self.name,
-                job_id=input_data.job_id,
-                success=output.success,
-            )
-
-            return output
+            return self.parse_response(response_text, input_data)
 
         except RateLimitError as e:
-            self.logger.error(
-                "agent_rate_limit",
-                agent=self.name,
-                job_id=input_data.job_id,
-                error=str(e),
-            )
             raise OpenAIRateLimitError(str(e))
-
         except APIError as e:
-            self.logger.error(
-                "agent_api_error",
-                agent=self.name,
-                job_id=input_data.job_id,
-                error=str(e),
-            )
-            raise OpenAIError(str(e), status_code=e.status_code if hasattr(e, "status_code") else None)
-
-        except Exception as e:
-            self.logger.exception(
-                "agent_error",
-                agent=self.name,
-                job_id=input_data.job_id,
-                error=str(e),
-            )
-            raise AgentError(self.name, str(e))
+            raise OpenAIError(str(e), status_code=e.status_code)
 
     def _extract_json_from_response(self, text: str) -> dict[str, Any]:
         """Extract JSON from LLM response, handling markdown code blocks."""
