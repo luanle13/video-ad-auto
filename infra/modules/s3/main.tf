@@ -41,7 +41,7 @@ resource "aws_s3_bucket_cors_configuration" "images" {
   cors_rule {
     allowed_headers = ["*"]
     allowed_methods = ["PUT", "POST", "GET"]
-    allowed_origins = ["*"]  # Allow from any origin for presigned uploads
+    allowed_origins = ["*"] # Allow from any origin for presigned uploads
     max_age_seconds = 3000
   }
 }
@@ -87,15 +87,64 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
   bucket = aws_s3_bucket.videos.id
 
   rule {
-    id     = "expire_objects"
+    id     = "expire-old-videos"
     status = "Enabled"
 
     filter {
-      prefix = ""  # Apply to all objects in the bucket
+      prefix = "" # Apply to all objects in the bucket
     }
 
     expiration {
       days = var.lifecycle_expiration_days
+    }
+  }
+
+  rule {
+    id     = "transition-to-ia"
+    status = "Enabled"
+
+    filter {
+      prefix = "" # Apply to all objects in the bucket
+    }
+
+    transition {
+      days          = 7
+      storage_class = "STANDARD_IA"
+    }
+  }
+}
+
+# Intelligent-Tiering for images bucket - optimizes costs for unpredictable access patterns
+resource "aws_s3_bucket_intelligent_tiering_configuration" "images" {
+  bucket = aws_s3_bucket.images.id
+  name   = "optimize-storage-costs"
+
+  tiering {
+    access_tier = "ARCHIVE_ACCESS"
+    days        = 90
+  }
+
+  tiering {
+    access_tier = "DEEP_ARCHIVE_ACCESS"
+    days        = 180
+  }
+}
+
+# Lifecycle rule to enable Intelligent-Tiering for all objects in images bucket
+resource "aws_s3_bucket_lifecycle_configuration" "images" {
+  bucket = aws_s3_bucket.images.id
+
+  rule {
+    id     = "intelligent-tiering"
+    status = "Enabled"
+
+    filter {
+      prefix = "" # Apply to all objects
+    }
+
+    transition {
+      days          = 0
+      storage_class = "INTELLIGENT_TIERING"
     }
   }
 }
