@@ -1,5 +1,9 @@
 __init__
 agents
 api
+lambda_agents
+lambda_api
+lambda_tts
+lambda_video
 shared
 workers
