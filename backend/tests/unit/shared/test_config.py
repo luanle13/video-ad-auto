@@ -26,10 +26,11 @@ def test_default_values():
     assert settings.dynamodb_products_table == "ai-video-products"
     assert settings.dynamodb_jobs_table == "ai-video-jobs"
     
-    # S3 defaults
-    assert settings.s3_images_bucket == "ai-video-images"
-    assert settings.s3_videos_bucket == "ai-video-videos"
-    assert settings.s3_presigned_expiry == 900
+    # Redis defaults
+    assert settings.redis_url == "redis://localhost:6379/0"
+    assert settings.cache_ttl == 3600
+    assert settings.cache_image_ttl == 7200
+    assert settings.cache_regen_ttl == 86400
     
     # Cognito defaults
     assert settings.cognito_user_pool_id == ""
@@ -72,18 +73,18 @@ def test_environment_variable_override():
         "DEBUG": "true",
         "AWS_REGION": "us-west-2",
         "DYNAMODB_USERS_TABLE": "ai-video-users-prod",
-        "S3_IMAGES_BUCKET": "ai-video-images-prod",
+        "REDIS_URL": "redis://redis.prod:6379/0",
         "COGNITO_USER_POOL_ID": "us-west-2_XXXXXXXXX",
         "COGNITO_APP_CLIENT_ID": "xxxxxxxxxxxxxxxxxxxxxxxxxx",
         "STEPFUNCTIONS_STATE_MACHINE_ARN": "arn:aws:states:us-west-2:123456789012:stateMachine:test"
     }):
         settings = Settings()
-        
+
         assert settings.environment == "prod"
         assert settings.debug is True
         assert settings.aws_region == "us-west-2"
         assert settings.dynamodb_users_table == "ai-video-users-prod"
-        assert settings.s3_images_bucket == "ai-video-images-prod"
+        assert settings.redis_url == "redis://redis.prod:6379/0"
         assert settings.cognito_user_pool_id == "us-west-2_XXXXXXXXX"
         assert settings.cognito_app_client_id == "xxxxxxxxxxxxxxxxxxxxxxxxxx"
         assert settings.stepfunctions_state_machine_arn == "arn:aws:states:us-west-2:123456789012:stateMachine:test"

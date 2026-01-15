@@ -72,9 +72,11 @@ async def test_handler_input_validation_error():
         "voice_gender": "invalid_gender",  # Invalid: not male/female
     }
 
-    with patch('src.workers.handlers.tts_handler.get_db') as mock_get_db:
+    with patch('src.workers.handlers.tts_handler.get_db') as mock_get_db, \
+         patch('src.workers.handlers.tts_handler.get_storage') as mock_get_storage:
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
+        mock_get_storage.return_value = MagicMock()
 
         # Call the handler
         result = await handler(event, {})
