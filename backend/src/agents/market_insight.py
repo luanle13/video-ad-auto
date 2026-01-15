@@ -123,7 +123,7 @@ Consider:
 4. Trending video formats and styles
 5. Optimal posting times for Vietnam timezone (GMT+7)
 
-Respond in JSON format:
+You must respond with valid JSON using the following structure:
 {
     "trending_hashtags": ["#hashtag1", "#hashtag2", ...],
     "content_angles": ["angle1", "angle2", ...],

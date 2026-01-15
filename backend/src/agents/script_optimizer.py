@@ -133,7 +133,7 @@ PATTERN INTERRUPTS (add every 5-7 seconds):
 - Direct address to camera
 - Unexpected visual elements
 
-Respond in JSON format:
+You must respond with valid JSON using the following structure:
 {
     "optimized_hook": "Improved hook text",
     "optimized_scenes": [

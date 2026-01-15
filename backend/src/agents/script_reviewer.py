@@ -136,26 +136,26 @@ AUTO-FIX:
 For minor issues, provide corrected versions in the final script.
 For major issues, reject and provide specific feedback.
 
-Respond in JSON format:
+You must respond with valid JSON using the following structure:
 {{
-    "approved": true/false,
-    "overall_score": 1-10,
+    "approved": true,
+    "overall_score": 8,
     "feedback": [
         {{
             "category": "hook|content|cta|compliance|pacing|engagement",
             "severity": "critical|warning|suggestion",
             "issue": "Description of issue",
             "recommendation": "How to fix",
-            "scene_number": null or number
+            "scene_number": null
         }}
     ],
     "critical_issues": ["Issue 1", "Issue 2"],
     "warnings": ["Warning 1"],
     "suggestions": ["Suggestion 1"],
-    "compliance_passed": true/false,
-    "compliance_issues": ["Issue 1"] or [],
+    "compliance_passed": true,
+    "compliance_issues": [],
     "final_hook": "Approved/fixed hook",
-    "final_scenes": [...scenes with any fixes applied...],
+    "final_scenes": [],
     "final_cta": "Approved/fixed CTA",
     "final_voiceover": "Complete approved voiceover",
     "review_summary": "Brief summary of review",

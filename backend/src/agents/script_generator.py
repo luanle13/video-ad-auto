@@ -107,7 +107,7 @@ BEST PRACTICES:
 - Add text overlay suggestions for key points
 - Prioritize product motion, interaction, and tactile feedback
 
-Respond in JSON format:
+You must respond with valid JSON using the following structure:
 {
     "hook": "Opening hook text (spoken in first 3 seconds)",
     "scenes": [
@@ -128,8 +128,7 @@ Respond in JSON format:
     "suggested_hashtags": ["#hashtag1", "#hashtag2"],
     "suggested_music_mood": "upbeat electronic",
     "text_overlays": ["Key text 1", "Key text 2"]
-}
-"""
+}"""
 
     def build_user_prompt(self, input_data: ScriptGeneratorInput, context: dict[str, Any]) -> str:
         """Build user prompt with all product and market data."""

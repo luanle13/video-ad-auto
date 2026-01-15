@@ -5,7 +5,6 @@ from typing import Any
 from pydantic import Field
 
 from src.agents.base import AgentInput, AgentOutput, BaseAgent
-from src.shared.exceptions import AgentError
 from src.shared.storage import get_storage
 
 
@@ -36,7 +35,7 @@ class ProductAnalyzerAgent(BaseAgent):
 
     name = "ProductAnalyzer"
     description = "Analyzes product images and metadata to extract features, USPs, and visual elements"
-    model = "gpt-4.1"  # Updated to GPT-4.1 for Azure Foundry
+    model = "gpt-4o"
     max_tokens = 2048
     temperature = 0.3  # Lower temperature for analysis
 
@@ -54,7 +53,7 @@ Your task is to analyze product images and metadata to extract:
 
 Focus on aspects that would be compelling in a 30-60 second video ad.
 
-Respond in JSON format with the following structure:
+You must respond with valid JSON using the following structure:
 {
     "key_features": ["feature1", "feature2", ...],
     "unique_selling_points": ["usp1", "usp2", ...],
@@ -68,7 +67,7 @@ Respond in JSON format with the following structure:
 
     def build_user_prompt(self, input_data: ProductAnalyzerInput, context: dict[str, Any]) -> str:
         """Build user prompt with product metadata."""
-        # Fetch and encode images
+        # Fetch and encode images for OpenAI vision API
         storage = get_storage()
         image_contents = []
 
@@ -83,18 +82,16 @@ Respond in JSON format with the following structure:
                     media_type = "image/webp"
                 else:
                     media_type = "image/jpeg"
+                # OpenAI vision format
                 image_contents.append({
-                    "type": "image",
-                    "source": {
-                        "type": "base64",
-                        "media_type": media_type,
-                        "data": encoded,
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:{media_type};base64,{encoded}",
                     },
                 })
             except Exception as e:
                 self.logger.warning("image_fetch_failed", key=key, error=str(e))
 
-        # For vision, we need to use the content array format
         # Store images for use in run method
         self._pending_images = image_contents
 
@@ -109,62 +106,48 @@ PRICE: {input_data.price}
 Please analyze the product images and metadata above, then provide your analysis in the specified JSON format."""
 
     def run(self, input_data: ProductAnalyzerInput, context: dict[str, Any] | None = None) -> ProductAnalyzerOutput:
-        """Override run to handle vision API."""
-        context = context or {}
+        """Override run to handle vision API with images."""
+        from openai import APIError, RateLimitError
 
-        self.logger.info(
-            "agent_starting",
-            agent=self.name,
-            job_id=input_data.job_id,
-        )
+        from src.shared.exceptions import OpenAIError, OpenAIRateLimitError
+
+        context = context or {}
 
         try:
             # Build user prompt and capture images
             user_prompt = self.build_user_prompt(input_data, context)
             images = getattr(self, "_pending_images", [])
 
-            # Build content array with images and text
-            # For GPT-4.1, vision support is not available via Azure OpenAI as of now.
-            # We'll just send the text prompt.
-            response = self._client.chat.completions.create(
+            # Build content array with images and text for OpenAI vision
+            user_content: list[dict] = [{"type": "text", "text": user_prompt}]
+            user_content.extend(images)
+
+            response = self.client.chat_completion(
+                messages=[
+                    {"role": "system", "content": self.system_prompt},
+                    {"role": "user", "content": user_content},
+                ],
                 model=self.model,
                 max_tokens=self.max_tokens,
                 temperature=self.temperature,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": user_prompt},
-                ],
+                response_format={"type": "json_object"},
             )
+
             response_text = response.choices[0].message.content
 
             self.logger.info(
-                "agent_llm_call",
+                "agent_run_complete",
                 agent=self.name,
-                job_id=input_data.job_id,
                 prompt_tokens=response.usage.prompt_tokens,
                 completion_tokens=response.usage.completion_tokens,
-                total_tokens=response.usage.total_tokens,
             )
 
-            output = self.parse_response(response_text, input_data)
+            return self.parse_response(response_text, input_data)
 
-            self.logger.info(
-                "agent_completed",
-                agent=self.name,
-                job_id=input_data.job_id,
-                success=output.success,
-            )
-
-            return output
-
-        except Exception as e:
-            self.logger.exception(
-                "agent_error",
-                agent=self.name,
-                job_id=input_data.job_id,
-                error=str(e),
-            )
-            raise AgentError(self.name, str(e))
+        except RateLimitError as e:
+            raise OpenAIRateLimitError(str(e))
+        except APIError as e:
+            raise OpenAIError(str(e), status_code=e.status_code)
 
     def parse_response(self, response_text: str, input_data: ProductAnalyzerInput) -> ProductAnalyzerOutput:
         """Parse LLM response into structured output."""
