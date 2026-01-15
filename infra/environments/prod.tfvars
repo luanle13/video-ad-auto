@@ -6,3 +6,4 @@ cognito_callback_urls = [
 ]
 budget_limit = 1000
 budget_notification_email = "admin@yourdomain.com"
+openai_model = "gpt-4o"

@@ -1,32 +1,8 @@
-terraform {
-  required_version = ">= 1.6.0"
+# Secrets module for API keys
+module "secrets" {
+  source = "./modules/secrets"
 
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.30"
-    }
-    random = {
-      source  = "hashicorp/random"
-      version = "~> 3.6"
-    }
-  }
-
-  backend "s3" {
-    # Configuration provided via backend.hcl
-  }
-}
-
-provider "aws" {
-  region = var.aws_region
-
-  default_tags {
-    tags = {
-      Project     = var.project_name
-      Environment = var.environment
-      ManagedBy   = "terraform"
-    }
-  }
+  name_prefix = local.name_prefix
 }
 
 # API Lambda function module
@@ -83,9 +59,10 @@ module "lambda_agents" {
 
   environment_variables = {
     # API Keys (from Secrets Manager)
-    ANTHROPIC_API_KEY_SECRET_NAME = aws_secretsmanager_secret.anthropic.name
-    KLING_API_KEY_SECRET_NAME     = aws_secretsmanager_secret.kling.name
-    ELEVENLABS_API_KEY_SECRET_NAME = aws_secretsmanager_secret.elevenlabs.name
+    SECRETS_OPENAI_KEY     = module.secrets.openai_secret_arn
+    OPENAI_MODEL           = var.openai_model
+    KLING_API_KEY_SECRET   = module.secrets.kling_secret_arn
+    ELEVENLABS_API_KEY_SECRET = module.secrets.elevenlabs_secret_arn
 
     # Database configuration
     DYNAMODB_USERS_TABLE    = aws_dynamodb_table.users.name
@@ -97,7 +74,7 @@ module "lambda_agents" {
     S3_VIDEOS_BUCKET = aws_s3_bucket.videos.bucket
 
     # Environment
-    ENVIRONMENT = var.environment
+    ENVIRONMENT  = var.environment
     PROJECT_NAME = var.project_name
   }
 
@@ -119,14 +96,14 @@ module "lambda_tts" {
 
   environment_variables = {
     # API Keys (from Secrets Manager)
-    ELEVENLABS_API_KEY_SECRET_NAME = aws_secretsmanager_secret.elevenlabs.name
-    POLLY_REGION                   = var.aws_region
+    ELEVENLABS_API_KEY_SECRET = module.secrets.elevenlabs_secret_arn
+    POLLY_REGION              = var.aws_region
 
     # Storage configuration
     S3_VIDEOS_BUCKET = aws_s3_bucket.videos.bucket
 
     # Environment
-    ENVIRONMENT = var.environment
+    ENVIRONMENT  = var.environment
     PROJECT_NAME = var.project_name
   }
 
@@ -148,7 +125,7 @@ module "lambda_video" {
 
   environment_variables = {
     # API Keys (from Secrets Manager)
-    KLING_API_KEY_SECRET_NAME = aws_secretsmanager_secret.kling.name
+    KLING_API_KEY_SECRET = module.secrets.kling_secret_arn
 
     # Storage configuration
     S3_IMAGES_BUCKET = aws_s3_bucket.images.bucket
@@ -158,7 +135,7 @@ module "lambda_video" {
     STEP_FUNCTIONS_STATE_MACHINE_ARN = aws_sfn_state_machine.video_generation.arn
 
     # Environment
-    ENVIRONMENT = var.environment
+    ENVIRONMENT  = var.environment
     PROJECT_NAME = var.project_name
   }
 
@@ -221,6 +198,7 @@ module "budget" {
   source = "./modules/budget"
 
   name_prefix        = local.name_prefix
+  environment        = var.environment
   budget_limit       = var.monthly_budget_limit
   notification_email = var.notification_email
 

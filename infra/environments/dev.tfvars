@@ -8,3 +8,4 @@ cognito_callback_urls = [
 ]
 budget_limit = 100
 budget_notification_email = "dev-team@example.com"
+openai_model = "gpt-4o-mini"

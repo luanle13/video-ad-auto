@@ -64,3 +64,9 @@ variable "budget_notification_email" {
   description = "Email address for budget notifications"
   type        = string
 }
+
+variable "openai_model" {
+  description = "OpenAI model to use for AI agents"
+  type        = string
+  default     = "gpt-4o"
+}
