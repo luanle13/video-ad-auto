@@ -10,10 +10,9 @@ All secrets are stored in AWS Secrets Manager and accessed by Lambda functions a
 
 | Secret Name | Service | Rotation Frequency | Owner |
 |-------------|---------|-------------------|-------|
-| `anthropic-api-key` | Anthropic Claude API | 90 days | Platform Team |
+| `openai-api-key` | OpenAI GPT API | 90 days | Platform Team |
 | `elevenlabs-api-key` | ElevenLabs TTS API | 90 days | Platform Team |
 | `kling-api-key` | Kling Video Generation API | 90 days | Platform Team |
-| `openai-api-key` | OpenAI GPT API | 90 days | Platform Team |
 
 ---
 
@@ -24,42 +23,6 @@ All secrets are stored in AWS Secrets Manager and accessed by Lambda functions a
 - AWS CLI configured with appropriate permissions
 - Access to respective service dashboards
 - Secrets Manager write permissions
-
-### Anthropic API Key
-
-1. **Generate new key in Anthropic console**
-   - Log in to [Anthropic Console](https://console.anthropic.com)
-   - Navigate to API Keys section
-   - Click "Create Key" and name it with date suffix (e.g., `video-platform-2024-01`)
-   - Copy the new key immediately (it won't be shown again)
-
-2. **Update secret in Secrets Manager**
-   ```bash
-   aws secretsmanager update-secret \
-     --secret-id anthropic-api-key \
-     --secret-string '{"api_key": "NEW_KEY_HERE"}' \
-     --region ap-southeast-1
-   ```
-
-3. **Verify agent Lambda works**
-   ```bash
-   # Invoke the agent Lambda with a test payload
-   aws lambda invoke \
-     --function-name video-platform-agent-lambda \
-     --payload '{"test": true}' \
-     --region ap-southeast-1 \
-     response.json
-
-   # Check response for success
-   cat response.json
-   ```
-
-4. **Revoke old key**
-   - Return to Anthropic Console
-   - Locate the old API key
-   - Click "Revoke" and confirm
-
----
 
 ### ElevenLabs API Key
 

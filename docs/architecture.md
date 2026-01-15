@@ -45,7 +45,7 @@ This document describes the system architecture, components, and data flows for 
                                       ▼                ▼                ▼
                                ┌─────────────┐  ┌─────────────┐  ┌─────────────┐
                                │  OpenAI     │  │ ElevenLabs  │  │  Kling AI   │
-                               │  GPT-4.1    │  │    API      │  │    API      │
+                               │  GPT-4o    │  │    API      │  │    API      │
                                └─────────────┘  └─────────────┘  └─────────────┘
 ```
 
@@ -91,7 +91,7 @@ This document describes the system architecture, components, and data flows for 
 | Component | Technology | Purpose |
 |-----------|------------|---------|
 | **Step Functions** | AWS Step Functions | Workflow orchestration |
-| **Agent Lambda** | CrewAI + GPT-4.1 | Script and content generation |
+| **Agent Lambda** | CrewAI + GPT-4o | Script and content generation |
 | **TTS Lambda** | ElevenLabs API | Text-to-speech conversion |
 | **Video Lambda** | Kling AI API | Video generation |
 
@@ -168,7 +168,7 @@ User                Frontend            API Gateway           Cognito
 | Decision | Rationale |
 |----------|-----------|
 | **CrewAI** | Multi-agent orchestration, role-based AI collaboration |
-| **GPT-4.1** | Best-in-class language understanding and generation |
+| **GPT-4o** | Best-in-class language understanding and generation |
 | **ElevenLabs** | High-quality, natural-sounding TTS |
 | **Kling AI** | Specialized video generation for short-form content |
 

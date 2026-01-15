@@ -10,7 +10,7 @@ The AI Video Automation System is a serverless platform that leverages AI techno
 
 **Key Features:**
 - Automated video generation from product images
-- AI-powered script generation using GPT-4.1
+- AI-powered script generation using GPT-4o
 - Natural text-to-speech with ElevenLabs
 - Video generation with Kling AI
 - Multi-platform support (TikTok, Shopee, Facebook)
@@ -34,7 +34,7 @@ Frontend (React) → API Gateway → Lambda (FastAPI) → Step Functions
 |-------|------------|
 | **Frontend** | React 18 + Vite + TypeScript + TailwindCSS |
 | **API** | FastAPI + Mangum (Lambda adapter) |
-| **AI Agents** | CrewAI with OpenAI GPT-4.1 |
+| **AI Agents** | CrewAI with OpenAI GPT-4o |
 | **Video** | Kling AI API |
 | **TTS** | ElevenLabs (fallback: AWS Polly) |
 | **Database** | DynamoDB (on-demand) |

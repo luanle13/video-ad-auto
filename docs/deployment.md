@@ -42,7 +42,7 @@ Obtain API keys from:
 
 | Service | URL | Purpose |
 |---------|-----|---------|
-| **OpenAI** | https://platform.openai.com | GPT-4.1 for content generation |
+| **OpenAI** | https://platform.openai.com | GPT-4o for content generation |
 | **ElevenLabs** | https://elevenlabs.io | Text-to-speech |
 | **Kling AI** | https://klingai.com | Video generation |
 
