@@ -22,16 +22,24 @@ def create_mock_kling_response(status: str = "completed"):
     return mock_response
 
 
-def create_mock_openai_response(content: str):
-    """Create mock OpenAI API response."""
-    mock_choice = MagicMock()
-    mock_choice.message.content = content
-    mock_response = MagicMock()
-    mock_response.choices = [mock_choice]
-    mock_response.usage.prompt_tokens = 50
-    mock_response.usage.completion_tokens = 100
-    mock_response.usage.total_tokens = 150
-    return mock_response
+def create_mock_openai_response(content: str, model: str = "gpt-4o"):
+    """Create mock OpenAI response."""
+    mock = MagicMock()
+    mock.choices = [MagicMock()]
+    mock.choices[0].message.content = content
+    mock.choices[0].finish_reason = "stop"
+    mock.model = model
+    mock.usage.prompt_tokens = 100
+    mock.usage.completion_tokens = 200
+    mock.usage.total_tokens = 300
+    return mock
+
+
+def create_mock_openai_client():
+    """Create mock OpenAI client wrapper."""
+    mock = MagicMock()
+    mock.chat_completion = MagicMock()
+    return mock
 
 
 def create_mock_elevenlabs_response(audio_data: bytes = b"audio"):

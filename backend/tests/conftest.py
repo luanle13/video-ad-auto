@@ -1,7 +1,11 @@
 import os
+from unittest.mock import patch
+
+import boto3
 import pytest
 from moto import mock_aws
-import boto3
+
+from tests.fixtures.mocks import create_mock_openai_client
 
 
 @pytest.fixture
@@ -142,3 +146,12 @@ def create_buckets(s3_client):
         CreateBucketConfiguration=location_constraint
     )
     return {"images": "test-images", "videos": "test-videos"}
+
+
+@pytest.fixture
+def mock_openai_client():
+    """Mock OpenAI client for testing agents."""
+    with patch("src.shared.openai_client.get_openai_client") as mock_get:
+        mock_client = create_mock_openai_client()
+        mock_get.return_value = mock_client
+        yield mock_client
