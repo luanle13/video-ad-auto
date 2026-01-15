@@ -1,16 +1,12 @@
-resource "aws_secretsmanager_secret" "anthropic" {
-  name = "${var.name_prefix}/anthropic-api-key"
+resource "aws_secretsmanager_secret" "openai" {
+  name        = "${var.name_prefix}/openai-api-key"
+  description = "OpenAI API key"
 
-  description = "Anthropic API key for Claude 3.5 Sonnet"
-
-  # Add tags for identification
   tags = {
-    Name        = "${var.name_prefix}-anthropic-api-key"
-    Module      = "secrets"
-    Service     = "anthropic"
+    Name    = "${var.name_prefix}-openai-api-key"
+    Module  = "secrets"
+    Service = "openai"
   }
-
-  # Secret value will be populated manually after deployment
 }
 
 resource "aws_secretsmanager_secret" "elevenlabs" {
