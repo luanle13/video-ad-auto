@@ -151,7 +151,7 @@ def create_buckets(s3_client):
 @pytest.fixture
 def mock_openai_client():
     """Mock OpenAI client for testing agents."""
-    with patch("src.shared.openai_client.get_openai_client") as mock_get:
+    with patch("src.agents.base.get_openai_client") as mock_get:
         mock_client = create_mock_openai_client()
         mock_get.return_value = mock_client
         yield mock_client
