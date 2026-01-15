@@ -4,9 +4,9 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from src.api.models.jobs import JobStatus
+from src.shared.cache_service import get_cache_service
 from src.shared.db import get_db
 from src.shared.logging import get_logger
-from src.shared.storage import get_storage
 from src.workers.services.tts_models import TTSProvider, TTSVoiceConfig
 from src.workers.services.tts_service import get_tts_service
 
@@ -73,7 +73,7 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         1. Parse and validate input
         2. Update job status to GENERATING_TTS
         3. Generate speech using TTSService
-        4. Upload audio to S3
+        4. Store audio in cache
         5. Update job step_outputs with TTS metadata
         6. Return success output
 
@@ -82,7 +82,7 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         - Return error output
     """
     db = get_db()
-    storage = get_storage()
+    cache_service = get_cache_service()
     tts_service = None
 
     try:
@@ -137,25 +137,17 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             use_ssml=use_ssml,
         )
 
-        # Generate S3 key for audio
-        audio_key = storage.generate_audio_key(
-            user_id=input_data.user_id,
-            job_id=input_data.job_id,
-        )
-
-        # Upload audio to S3
+        # Store audio in cache
         logger.info(
-            "uploading_audio_to_s3",
+            "storing_audio_in_cache",
             job_id=input_data.job_id,
-            s3_key=audio_key,
             audio_size=len(result.audio_data),
         )
 
-        audio_s3_url = storage.upload_file(
-            bucket_type="videos",  # Audio files go in videos bucket
-            key=audio_key,
-            body=result.audio_data,
-            content_type=result.content_type,
+        cache_service.store_audio(
+            user_id=input_data.user_id,
+            job_id=input_data.job_id,
+            data=result.audio_data,
         )
 
         # Update job step_outputs
@@ -164,8 +156,7 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "character_count": result.character_count,
             "duration_estimate_seconds": result.duration_estimate_seconds,
             "voice_id": result.voice_id,
-            "audio_s3_key": audio_key,
-            "audio_s3_url": audio_s3_url,
+            "audio_cached": True,
         }
 
         db.update_job_step_output(
@@ -185,8 +176,8 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Return success output
         return TTSHandlerOutput(
             success=True,
-            audio_s3_key=audio_key,
-            audio_s3_url=audio_s3_url,
+            audio_s3_key=None,  # Audio stored in cache
+            audio_s3_url=None,  # Audio stored in cache
             provider_used=result.provider_used.value,
             character_count=result.character_count,
             duration_estimate_seconds=result.duration_estimate_seconds,

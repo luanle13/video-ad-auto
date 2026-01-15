@@ -7,7 +7,6 @@ from src.shared.config import get_settings
 from src.shared.exceptions import KlingError
 from src.shared.logging import get_logger
 from src.shared.secrets import get_secrets
-from src.shared.storage import get_storage
 from src.workers.clients.kling import KlingClient, KlingJobResponse
 
 
@@ -31,8 +30,7 @@ _video_service: "VideoService | None" = None
 class VideoService:
     """Video generation service using Kling AI API.
 
-    Provides methods for generating videos from text prompts and audio files.
-    Supports integration with S3 for audio file handling.
+    Provides methods for generating videos from text prompts.
     """
 
     def __init__(self) -> None:
@@ -105,12 +103,11 @@ class VideoService:
         # Get Kling client
         client = await self._get_kling_client()
 
-        # Get presigned URL for audio if provided
+        # Note: Audio URL support removed with S3 migration
+        # Audio is now cached and not passed to video generation
         audio_url = None
         if audio_s3_key:
-            storage = get_storage()
-            audio_url = storage.generate_download_url("videos", audio_s3_key)
-            logger.info("audio_presigned_url_generated", key=audio_s3_key)
+            logger.info("audio_s3_key_ignored", key=audio_s3_key)
 
         # Use default config if none provided
         if config is None:

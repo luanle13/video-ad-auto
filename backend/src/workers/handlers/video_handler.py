@@ -4,9 +4,9 @@ from typing import Any
 from pydantic import BaseModel, Field
 
 from src.api.models.jobs import JobStatus
+from src.shared.cache_service import get_cache_service
 from src.shared.db import get_db
 from src.shared.logging import get_logger
-from src.shared.storage import get_storage
 from src.workers.services.video_service import get_video_service
 
 
@@ -65,8 +65,8 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         1. Parse and validate input
         2. Update job status to GENERATING_VIDEO
         3. Generate video using VideoService
-        4. Upload video to S3
-        5. Update job with video_key, audio_key, status=COMPLETE
+        4. Store video in cache
+        5. Update job with status=COMPLETE
         6. Return success output
 
     On Error:
@@ -74,7 +74,7 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         - Return error output
     """
     db = get_db()
-    storage = get_storage()
+    cache_service = get_cache_service()
     video_service = None
 
     try:
@@ -120,31 +120,22 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             config=config,
         )
 
-        # Generate S3 key for video
-        video_key = storage.generate_video_key(
-            user_id=input_data.user_id,
-            job_id=input_data.job_id,
-        )
-
-        # Upload video to S3
+        # Store video in cache
         logger.info(
-            "uploading_video_to_s3",
+            "storing_video_in_cache",
             job_id=input_data.job_id,
-            s3_key=video_key,
             video_size=len(result.video_data),
         )
 
-        video_s3_url = storage.upload_file(
-            bucket_type="videos",
-            key=video_key,
-            body=result.video_data,
-            content_type="video/mp4",
+        cache_service.store_video(
+            user_id=input_data.user_id,
+            job_id=input_data.job_id,
+            data=result.video_data,
         )
 
-        # Update job with video and audio keys
+        # Update job step output
         step_output = {
-            "video_s3_key": video_key,
-            "video_s3_url": video_s3_url,
+            "video_cached": True,
             "duration_seconds": result.duration_seconds,
             "job_response": result.job_response.data,  # Store job response data
         }
@@ -173,8 +164,8 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Return success output
         return VideoHandlerOutput(
             success=True,
-            video_s3_key=video_key,
-            video_s3_url=video_s3_url,
+            video_s3_key=None,  # Video stored in cache
+            video_s3_url=None,  # Video stored in cache
             duration_seconds=result.duration_seconds,
         ).model_dump()
 

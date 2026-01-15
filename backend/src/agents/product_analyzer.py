@@ -5,7 +5,7 @@ from typing import Any
 from pydantic import Field
 
 from src.agents.base import AgentInput, AgentOutput, BaseAgent
-from src.shared.storage import get_storage
+from src.shared.cache_service import get_cache_service
 
 
 class ProductAnalyzerInput(AgentInput):
@@ -68,29 +68,23 @@ You must respond with valid JSON using the following structure:
     def build_user_prompt(self, input_data: ProductAnalyzerInput, context: dict[str, Any]) -> str:
         """Build user prompt with product metadata."""
         # Fetch and encode images for OpenAI vision API
-        storage = get_storage()
+        cache_service = get_cache_service()
+        user_id = context.get("user_id", "")
         image_contents = []
 
-        for key in input_data.image_keys[:3]:  # Limit to 3 images for cost
+        for image_id in input_data.image_keys[:3]:  # Limit to 3 images for cost
             try:
-                image_data = storage.download_file("images", key)
-                encoded = base64.b64encode(image_data).decode("utf-8")
-                # Determine media type from key
-                if key.endswith(".png"):
-                    media_type = "image/png"
-                elif key.endswith(".webp"):
-                    media_type = "image/webp"
-                else:
-                    media_type = "image/jpeg"
-                # OpenAI vision format
-                image_contents.append({
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:{media_type};base64,{encoded}",
-                    },
-                })
+                # Get image from cache as base64 data URL
+                data_url = cache_service.get_image_base64(user_id, image_id)
+                if data_url:
+                    image_contents.append({
+                        "type": "image_url",
+                        "image_url": {
+                            "url": data_url,
+                        },
+                    })
             except Exception as e:
-                self.logger.warning("image_fetch_failed", key=key, error=str(e))
+                self.logger.warning("image_fetch_failed", image_id=image_id, error=str(e))
 
         # Store images for use in run method
         self._pending_images = image_contents

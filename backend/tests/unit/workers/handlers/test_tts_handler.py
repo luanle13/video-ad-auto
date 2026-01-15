@@ -1,5 +1,4 @@
 """Unit tests for TTS Lambda handler focusing on specific requirements."""
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -23,17 +22,16 @@ async def test_handler_success():
     }
 
     with patch('src.workers.handlers.tts_handler.get_db') as mock_get_db, \
-         patch('src.workers.handlers.tts_handler.get_storage') as mock_get_storage, \
+         patch('src.workers.handlers.tts_handler.get_cache_service') as mock_get_cache_service, \
          patch('src.workers.handlers.tts_handler.get_tts_service') as mock_get_service:
 
         # Setup mocks
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        mock_storage = MagicMock()
-        mock_get_storage.return_value = mock_storage
-        mock_storage.generate_audio_key.return_value = "user123/job456/voiceover.mp3"
-        mock_storage.upload_file.return_value = "s3://bucket/user123/job456/voiceover.mp3"
+        mock_cache = MagicMock()
+        mock_get_cache_service.return_value = mock_cache
+        mock_cache.store_audio.return_value = True
 
         mock_service = AsyncMock()
         mock_get_service.return_value = mock_service
@@ -54,12 +52,19 @@ async def test_handler_success():
 
         # Verify the result
         assert result["success"] is True
-        assert result["audio_s3_key"] == "user123/job456/voiceover.mp3"
-        assert result["audio_s3_url"] == "s3://bucket/user123/job456/voiceover.mp3"
+        assert result["audio_s3_key"] is None  # Audio stored in cache
+        assert result["audio_s3_url"] is None  # Audio stored in cache
         assert result["provider_used"] == "elevenlabs"
         assert result["character_count"] == 50
         assert result["duration_estimate_seconds"] == 4.0
         assert result["error"] is None
+
+        # Verify audio was stored in cache
+        mock_cache.store_audio.assert_called_once_with(
+            user_id="user123",
+            job_id="job456",
+            data=b"fake audio data",
+        )
 
 
 @pytest.mark.asyncio
@@ -73,10 +78,10 @@ async def test_handler_input_validation_error():
     }
 
     with patch('src.workers.handlers.tts_handler.get_db') as mock_get_db, \
-         patch('src.workers.handlers.tts_handler.get_storage') as mock_get_storage:
+         patch('src.workers.handlers.tts_handler.get_cache_service') as mock_get_cache_service:
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
-        mock_get_storage.return_value = MagicMock()
+        mock_get_cache_service.return_value = MagicMock()
 
         # Call the handler
         result = await handler(event, {})
@@ -98,15 +103,15 @@ async def test_handler_service_error():
     }
 
     with patch('src.workers.handlers.tts_handler.get_db') as mock_get_db, \
-         patch('src.workers.handlers.tts_handler.get_storage') as mock_get_storage, \
+         patch('src.workers.handlers.tts_handler.get_cache_service') as mock_get_cache_service, \
          patch('src.workers.handlers.tts_handler.get_tts_service') as mock_get_service:
 
         # Setup mocks
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        mock_storage = MagicMock()
-        mock_get_storage.return_value = mock_storage
+        mock_cache = MagicMock()
+        mock_get_cache_service.return_value = mock_cache
 
         mock_service = AsyncMock()
         mock_get_service.return_value = mock_service
@@ -133,17 +138,16 @@ async def test_job_status_updated():
     }
 
     with patch('src.workers.handlers.tts_handler.get_db') as mock_get_db, \
-         patch('src.workers.handlers.tts_handler.get_storage') as mock_get_storage, \
+         patch('src.workers.handlers.tts_handler.get_cache_service') as mock_get_cache_service, \
          patch('src.workers.handlers.tts_handler.get_tts_service') as mock_get_service:
 
         # Setup mocks
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        mock_storage = MagicMock()
-        mock_get_storage.return_value = mock_storage
-        mock_storage.generate_audio_key.return_value = "user123/job456/voiceover.mp3"
-        mock_storage.upload_file.return_value = "s3://bucket/user123/job456/voiceover.mp3"
+        mock_cache = MagicMock()
+        mock_get_cache_service.return_value = mock_cache
+        mock_cache.store_audio.return_value = True
 
         mock_service = AsyncMock()
         mock_get_service.return_value = mock_service
@@ -181,17 +185,16 @@ async def test_result_stored_in_job():
     }
 
     with patch('src.workers.handlers.tts_handler.get_db') as mock_get_db, \
-         patch('src.workers.handlers.tts_handler.get_storage') as mock_get_storage, \
+         patch('src.workers.handlers.tts_handler.get_cache_service') as mock_get_cache_service, \
          patch('src.workers.handlers.tts_handler.get_tts_service') as mock_get_service:
 
         # Setup mocks
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        mock_storage = MagicMock()
-        mock_get_storage.return_value = mock_storage
-        mock_storage.generate_audio_key.return_value = "user123/job456/voiceover.mp3"
-        mock_storage.upload_file.return_value = "s3://bucket/user123/job456/voiceover.mp3"
+        mock_cache = MagicMock()
+        mock_get_cache_service.return_value = mock_cache
+        mock_cache.store_audio.return_value = True
 
         mock_service = AsyncMock()
         mock_get_service.return_value = mock_service
@@ -216,9 +219,9 @@ async def test_result_stored_in_job():
         assert call_args.kwargs["user_id"] == "user123"
         assert call_args.kwargs["job_id"] == "job456"
         assert call_args.kwargs["step_name"] == "tts"
-        
+
         output_data = call_args.kwargs["output"]
         assert output_data["provider_used"] == "elevenlabs"
         assert output_data["character_count"] == 20
         assert output_data["duration_estimate_seconds"] == 2.0
-        assert output_data["audio_s3_key"] == "user123/job456/voiceover.mp3"
+        assert output_data["audio_cached"] is True

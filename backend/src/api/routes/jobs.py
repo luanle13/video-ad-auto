@@ -16,30 +16,13 @@ from src.shared.config import get_settings
 from src.shared.db import get_db
 from src.shared.exceptions import ValidationError, NotFoundError
 from src.shared.logging import get_logger
-from src.shared.storage import get_storage
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
 logger = get_logger(__name__)
 
 
-def _job_to_response(job: dict, storage_client) -> JobResponse:
+def _job_to_response(job: dict) -> JobResponse:
     """Convert job dict to response model."""
-    video_url = None
-    audio_url = None
-
-    if job.get("video_key"):
-        try:
-            video_url = storage_client.generate_download_url("videos", job["video_key"])
-        except Exception:
-            # If URL generation fails, set to None rather than crashing
-            video_url = None
-
-    if job.get("audio_key"):
-        try:
-            audio_url = storage_client.generate_download_url("audio", job["audio_key"])
-        except Exception:
-            audio_url = None
-
     return JobResponse(
         job_id=job["job_id"],
         user_id=job["user_id"],
@@ -47,8 +30,8 @@ def _job_to_response(job: dict, storage_client) -> JobResponse:
         status=JobStatus(job["status"]),
         adjustments=job.get("adjustments", {}),
         step_outputs=job.get("step_outputs", {}),
-        video_url=video_url,
-        audio_url=audio_url,
+        video_url=None,  # Video URLs served via cache endpoints
+        audio_url=None,  # Audio URLs served via cache endpoints
         error_message=job.get("error_message"),
         created_at=job["created_at"],
         updated_at=job["updated_at"],
@@ -67,7 +50,6 @@ async def create_job(
     """
     settings = get_settings()
     db = get_db()
-    storage = get_storage()
 
     # Verify product exists
     product = db.get_product(current_user.user_id, request.product_id)
@@ -122,7 +104,7 @@ async def create_job(
             logger.warning("failed_to_update_job_status", job_id=job["job_id"], error=str(e))
         raise
 
-    return _job_to_response(job, storage)
+    return _job_to_response(job)
 
 
 @router.get("/", response_model=JobListResponse)
@@ -137,7 +119,6 @@ async def list_jobs(
     Optionally filter by status.
     """
     db = get_db()
-    storage = get_storage()
 
     jobs = db.list_jobs(
         user_id=current_user.user_id,
@@ -145,9 +126,7 @@ async def list_jobs(
         status=status.value if status else None,
     )
 
-    job_responses = []
-    for job in jobs:
-        job_responses.append(_job_to_response(job, storage))
+    job_responses = [_job_to_response(job) for job in jobs]
 
     return JobListResponse(jobs=job_responses, count=len(job_responses))
 
@@ -161,13 +140,12 @@ async def get_job(
     Get a specific job by ID.
     """
     db = get_db()
-    storage = get_storage()
 
     job = db.get_job(current_user.user_id, job_id)
     if not job:
         raise NotFoundError("Job", job_id)
 
-    return _job_to_response(job, storage)
+    return _job_to_response(job)
 
 
 @router.post("/{job_id}/regenerate", response_model=JobResponse)
@@ -182,7 +160,6 @@ async def regenerate_job(
     Creates a new job based on the same product with updated adjustments.
     """
     db = get_db()
-    storage = get_storage()
 
     # Get original job
     original_job = db.get_job(current_user.user_id, job_id)
@@ -256,19 +233,20 @@ async def regenerate_job(
             logger.warning("failed_to_update_regeneration_job_status", job_id=new_job["job_id"], error=str(e))
         raise
 
-    return _job_to_response(new_job, storage)
+    return _job_to_response(new_job)
 
 
 @router.get("/{job_id}/video")
 async def get_video_download_url(
     job_id: str,
     current_user: AuthenticatedUser,
-) -> dict[str, str]:
+) -> dict[str, str | None]:
     """
-    Get presigned download URL for the generated video.
+    Get video data endpoint info for the generated video.
+
+    Note: Videos are now served from cache, not S3.
     """
     db = get_db()
-    storage = get_storage()
 
     job = db.get_job(current_user.user_id, job_id)
     if not job:
@@ -280,11 +258,7 @@ async def get_video_download_url(
             field="job_id",
         )
 
-    if not job.get("video_key"):
-        raise ValidationError("Video not generated", field="job_id")
+    logger.info("video_download_requested", job_id=job_id)
 
-    download_url = storage.generate_download_url("videos", job["video_key"])
-
-    logger.info("video_download_url_generated", job_id=job_id)
-
-    return {"download_url": download_url}
+    # Videos are served via cache endpoint
+    return {"job_id": job_id, "message": "Use cache endpoint to retrieve video"}
