@@ -1,10 +1,8 @@
 """Job routes for video generation workflow."""
 import json
-
 import boto3
+from fastapi import APIRouter, Depends
 from botocore.exceptions import ClientError
-from fastapi import APIRouter
-from fastapi.responses import Response
 
 from src.api.dependencies.auth import AuthenticatedUser
 from src.api.models.jobs import (
@@ -14,10 +12,9 @@ from src.api.models.jobs import (
     JobStatus,
     RegenerateJobRequest,
 )
-from src.shared.cache_service import get_cache_service
 from src.shared.config import get_settings
 from src.shared.db import get_db
-from src.shared.exceptions import NotFoundError, ValidationError
+from src.shared.exceptions import ValidationError, NotFoundError
 from src.shared.logging import get_logger
 
 router = APIRouter(prefix="/jobs", tags=["Jobs"])
@@ -161,10 +158,8 @@ async def regenerate_job(
     Regenerate video with new adjustments.
 
     Creates a new job based on the same product with updated adjustments.
-    Extends TTL for all product images before regeneration.
     """
     db = get_db()
-    cache_service = get_cache_service()
 
     # Get original job
     original_job = db.get_job(current_user.user_id, job_id)
@@ -178,22 +173,6 @@ async def regenerate_job(
             field="job_id",
         )
 
-    # Get product for Step Functions input
-    product = db.get_product(current_user.user_id, original_job["product_id"])
-    if not product:
-        raise NotFoundError("Product", original_job["product_id"])
-
-    # Extend TTL for all product images before regeneration
-    for image_id in product.get("image_keys", []):
-        cache_service.extend_image_ttl(current_user.user_id, image_id)
-
-    logger.info(
-        "image_ttl_extended_for_regeneration",
-        job_id=job_id,
-        product_id=original_job["product_id"],
-        image_count=len(product.get("image_keys", [])),
-    )
-
     # Create new job with merged adjustments
     original_adjustments = original_job.get("adjustments", {})
     new_adjustments = request.adjustments.model_dump(exclude_none=True) if request.adjustments else {}
@@ -204,6 +183,11 @@ async def regenerate_job(
         product_id=original_job["product_id"],
         adjustments=merged_adjustments,
     )
+
+    # Get product for Step Functions input
+    product = db.get_product(current_user.user_id, original_job["product_id"])
+    if not product:
+        raise NotFoundError("Product", original_job["product_id"])
 
     # Start Step Functions execution
     settings = get_settings()
@@ -253,18 +237,16 @@ async def regenerate_job(
 
 
 @router.get("/{job_id}/video")
-async def get_video(
+async def get_video_download_url(
     job_id: str,
     current_user: AuthenticatedUser,
-) -> Response:
+) -> dict[str, str | None]:
     """
-    Get the generated video from cache.
+    Get video data endpoint info for the generated video.
 
-    Returns video bytes with appropriate content type.
-    Returns 404 if video has expired from cache.
+    Note: Videos are now served from cache, not S3.
     """
     db = get_db()
-    cache_service = get_cache_service()
 
     job = db.get_job(current_user.user_id, job_id)
     if not job:
@@ -276,16 +258,7 @@ async def get_video(
             field="job_id",
         )
 
-    # Retrieve video from cache
-    video_data = cache_service.get_video(current_user.user_id, job_id)
+    logger.info("video_download_requested", job_id=job_id)
 
-    if video_data is None:
-        raise NotFoundError("Video", job_id)
-
-    logger.info("video_retrieved", job_id=job_id, size=len(video_data))
-
-    return Response(
-        content=video_data,
-        media_type="video/mp4",
-        headers={"Cache-Control": "private, max-age=3600"},
-    )
+    # Videos are served via cache endpoint
+    return {"job_id": job_id, "message": "Use cache endpoint to retrieve video"}
