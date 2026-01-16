@@ -52,8 +52,7 @@ async def test_handler_success():
 
         # Verify the result
         assert result["success"] is True
-        assert result["audio_s3_key"] is None  # Audio stored in cache
-        assert result["audio_s3_url"] is None  # Audio stored in cache
+        assert result["audio_cached"] is True
         assert result["provider_used"] == "elevenlabs"
         assert result["character_count"] == 50
         assert result["duration_estimate_seconds"] == 4.0

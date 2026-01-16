@@ -42,8 +42,7 @@ class TTSHandlerOutput(BaseModel):
 
     Attributes:
         success: Whether TTS generation succeeded
-        audio_s3_key: S3 key where audio is stored (if success)
-        audio_s3_url: S3 URI (s3://bucket/key) for audio (if success)
+        audio_cached: Whether audio was stored in cache (if success)
         provider_used: Which TTS provider was actually used
         character_count: Number of characters processed
         duration_estimate_seconds: Estimated audio duration in seconds
@@ -51,8 +50,7 @@ class TTSHandlerOutput(BaseModel):
     """
 
     success: bool = Field(..., description="Whether operation succeeded")
-    audio_s3_key: str | None = Field(None, description="S3 key for audio file")
-    audio_s3_url: str | None = Field(None, description="S3 URI for audio")
+    audio_cached: bool = Field(default=False, description="Whether audio is stored in cache")
     provider_used: str | None = Field(None, description="TTS provider used")
     character_count: int | None = Field(None, description="Characters processed")
     duration_estimate_seconds: float | None = Field(None, description="Audio duration estimate")
@@ -176,8 +174,7 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Return success output
         return TTSHandlerOutput(
             success=True,
-            audio_s3_key=None,  # Audio stored in cache
-            audio_s3_url=None,  # Audio stored in cache
+            audio_cached=True,
             provider_used=result.provider_used.value,
             character_count=result.character_count,
             duration_estimate_seconds=result.duration_estimate_seconds,
