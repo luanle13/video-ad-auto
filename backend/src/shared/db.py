@@ -131,29 +131,7 @@ class DynamoDBClient:
             Key={"user_id": user_id, "product_id": product_id}
         )
         logger.info("product_deleted", user_id=user_id, product_id=product_id)
-
-    def add_product_image(
-        self, user_id: str, product_id: str, image_id: str
-    ) -> dict[str, Any]:
-        """Add an image ID to a product's image_keys list."""
-        response = self._products_table.update_item(
-            Key={"user_id": user_id, "product_id": product_id},
-            UpdateExpression="SET image_keys = list_append(image_keys, :img), updated_at = :now",
-            ExpressionAttributeValues={
-                ":img": [image_id],
-                ":now": self.now_iso(),
-            },
-            ConditionExpression="attribute_exists(user_id)",
-            ReturnValues="ALL_NEW",
-        )
-        logger.info(
-            "product_image_added",
-            user_id=user_id,
-            product_id=product_id,
-            image_id=image_id,
-        )
-        return response["Attributes"]
-
+    
     # === Jobs ===
     
     def create_job(
