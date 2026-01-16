@@ -10,5 +10,5 @@ output "state_machine_name" {
 
 output "role_arn" {
   description = "ARN of the IAM role used by the state machine"
-  value       = aws_iam_role.main.arn
+  value       = aws_iam_role.state_machine_role.arn
 }

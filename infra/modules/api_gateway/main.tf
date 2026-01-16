@@ -110,7 +110,7 @@ resource "aws_api_gateway_stage" "main" {
   xray_tracing_enabled = true
 
   # Access log settings
-  access_log_setting {
+  access_log_settings {
     destination_arn = aws_cloudwatch_log_group.api_access_logs.arn
     format = jsonencode({
       requestId      = "$context.requestId"

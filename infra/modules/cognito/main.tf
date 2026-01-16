@@ -46,8 +46,8 @@ resource "aws_cognito_user_pool_client" "main" {
 
   # Explicit auth flows
   explicit_auth_flows = [
-    "USER_PASSWORD_AUTH",
-    "REFRESH_TOKEN_AUTH"
+    "ALLOW_USER_PASSWORD_AUTH",
+    "ALLOW_REFRESH_TOKEN_AUTH"
   ]
 
   # Callback and logout URLs from variables
@@ -64,17 +64,12 @@ resource "aws_cognito_user_pool_client" "main" {
   refresh_token_validity = 30
 
   # Token validity units
-  access_token_validity_unit  = "minutes"
-  id_token_validity_unit      = "minutes"
-  refresh_token_validity_unit = "days"
+  token_validity_units {
+    access_token  = "minutes"
+    id_token      = "minutes"
+    refresh_token = "days"
+  }
 
   # Prevent user existence errors
   prevent_user_existence_errors = "ENABLED"
-
-  # Add tags for identification
-  tags = {
-    Name        = "${var.name_prefix}-web-client"
-    Environment = var.environment
-    Module      = "cognito"
-  }
 }

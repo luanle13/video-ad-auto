@@ -1,9 +1,86 @@
-# Secrets module for API keys
+# ============================================
+# S3 Buckets Module
+# ============================================
+module "s3" {
+  source = "./modules/s3"
+
+  name_prefix              = local.name_prefix
+  name_suffix              = local.name_suffix
+  environment              = var.environment
+  lifecycle_expiration_days = 30
+}
+
+# Deployment bucket for Lambda code (created separately to avoid circular deps)
+resource "aws_s3_bucket" "deployment" {
+  bucket = "${local.name_prefix}-deployment-${local.name_suffix}"
+
+  tags = {
+    Name        = "${local.name_prefix}-deployment"
+    Environment = var.environment
+  }
+}
+
+resource "aws_s3_bucket_versioning" "deployment" {
+  bucket = aws_s3_bucket.deployment.id
+
+  versioning_configuration {
+    status = "Enabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "deployment" {
+  bucket = aws_s3_bucket.deployment.bucket
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
+resource "aws_s3_bucket_public_access_block" "deployment" {
+  bucket = aws_s3_bucket.deployment.id
+
+  block_public_acls       = true
+  block_public_policy     = true
+  ignore_public_acls      = true
+  restrict_public_buckets = true
+}
+
+# ============================================
+# DynamoDB Tables Module
+# ============================================
+module "dynamodb" {
+  source = "./modules/dynamodb"
+
+  name_prefix = local.name_prefix
+  environment = var.environment
+}
+
+# ============================================
+# Cognito Authentication Module
+# ============================================
+module "cognito" {
+  source = "./modules/cognito"
+
+  name_prefix   = local.name_prefix
+  environment   = var.environment
+  callback_urls = var.cognito_callback_urls
+  logout_urls   = var.cognito_callback_urls  # Using same URLs for logout
+}
+
+# ============================================
+# Secrets Manager Module
+# ============================================
 module "secrets" {
   source = "./modules/secrets"
 
   name_prefix = local.name_prefix
 }
+
+# ============================================
+# Lambda Functions
+# ============================================
 
 # API Lambda function module
 module "lambda_api" {
@@ -20,24 +97,24 @@ module "lambda_api" {
 
   environment_variables = {
     # Database configuration
-    DYNAMODB_USERS_TABLE    = aws_dynamodb_table.users.name
-    DYNAMODB_PRODUCTS_TABLE = aws_dynamodb_table.products.name
-    DYNAMODB_JOBS_TABLE     = aws_dynamodb_table.jobs.name
+    DYNAMODB_USERS_TABLE    = module.dynamodb.users_table_name
+    DYNAMODB_PRODUCTS_TABLE = module.dynamodb.products_table_name
+    DYNAMODB_JOBS_TABLE     = module.dynamodb.jobs_table_name
 
     # Storage configuration
-    S3_IMAGES_BUCKET = aws_s3_bucket.images.bucket
-    S3_VIDEOS_BUCKET = aws_s3_bucket.videos.bucket
+    S3_IMAGES_BUCKET = module.s3.images_bucket_name
+    S3_VIDEOS_BUCKET = module.s3.videos_bucket_name
 
     # Auth configuration
-    COGNITO_USER_POOL_ID     = aws_cognito_user_pool.main.id
-    COGNITO_CLIENT_ID        = aws_cognito_user_pool_client.main.id
-    COGNITO_REGION           = var.aws_region
+    COGNITO_USER_POOL_ID = module.cognito.user_pool_id
+    COGNITO_CLIENT_ID    = module.cognito.app_client_id
+    COGNITO_REGION       = var.aws_region
 
-    # Step Functions configuration
-    STEP_FUNCTIONS_STATE_MACHINE_ARN = aws_sfn_state_machine.video_generation.arn
+    # Step Functions configuration (will be set via SSM)
+    STEP_FUNCTIONS_STATE_MACHINE_ARN = module.stepfunctions.state_machine_arn
 
     # Environment
-    ENVIRONMENT = var.environment
+    ENVIRONMENT  = var.environment
     PROJECT_NAME = var.project_name
   }
 
@@ -59,19 +136,19 @@ module "lambda_agents" {
 
   environment_variables = {
     # API Keys (from Secrets Manager)
-    SECRETS_OPENAI_KEY     = module.secrets.openai_secret_arn
-    OPENAI_MODEL           = var.openai_model
-    KLING_API_KEY_SECRET   = module.secrets.kling_secret_arn
+    SECRETS_OPENAI_KEY        = module.secrets.openai_secret_arn
+    OPENAI_MODEL              = var.openai_model
+    KLING_API_KEY_SECRET      = module.secrets.kling_secret_arn
     ELEVENLABS_API_KEY_SECRET = module.secrets.elevenlabs_secret_arn
 
     # Database configuration
-    DYNAMODB_USERS_TABLE    = aws_dynamodb_table.users.name
-    DYNAMODB_PRODUCTS_TABLE = aws_dynamodb_table.products.name
-    DYNAMODB_JOBS_TABLE     = aws_dynamodb_table.jobs.name
+    DYNAMODB_USERS_TABLE    = module.dynamodb.users_table_name
+    DYNAMODB_PRODUCTS_TABLE = module.dynamodb.products_table_name
+    DYNAMODB_JOBS_TABLE     = module.dynamodb.jobs_table_name
 
     # Storage configuration
-    S3_IMAGES_BUCKET = aws_s3_bucket.images.bucket
-    S3_VIDEOS_BUCKET = aws_s3_bucket.videos.bucket
+    S3_IMAGES_BUCKET = module.s3.images_bucket_name
+    S3_VIDEOS_BUCKET = module.s3.videos_bucket_name
 
     # Environment
     ENVIRONMENT  = var.environment
@@ -100,7 +177,7 @@ module "lambda_tts" {
     POLLY_REGION              = var.aws_region
 
     # Storage configuration
-    S3_VIDEOS_BUCKET = aws_s3_bucket.videos.bucket
+    S3_VIDEOS_BUCKET = module.s3.videos_bucket_name
 
     # Environment
     ENVIRONMENT  = var.environment
@@ -111,6 +188,7 @@ module "lambda_tts" {
 }
 
 # Video Lambda function module
+# Note: This Lambda is invoked BY Step Functions, so it doesn't need the ARN
 module "lambda_video" {
   source = "./modules/lambda"
 
@@ -128,11 +206,8 @@ module "lambda_video" {
     KLING_API_KEY_SECRET = module.secrets.kling_secret_arn
 
     # Storage configuration
-    S3_IMAGES_BUCKET = aws_s3_bucket.images.bucket
-    S3_VIDEOS_BUCKET = aws_s3_bucket.videos.bucket
-
-    # Step Functions configuration
-    STEP_FUNCTIONS_STATE_MACHINE_ARN = aws_sfn_state_machine.video_generation.arn
+    S3_IMAGES_BUCKET = module.s3.images_bucket_name
+    S3_VIDEOS_BUCKET = module.s3.videos_bucket_name
 
     # Environment
     ENVIRONMENT  = var.environment
@@ -142,48 +217,64 @@ module "lambda_video" {
   layers = []
 }
 
-# API Gateway module
+# ============================================
+# Step Functions Module
+# ============================================
+module "stepfunctions" {
+  source = "./modules/stepfunctions"
+
+  name_prefix      = local.name_prefix
+  agent_lambda_arn = module.lambda_agents.function_arn
+  tts_lambda_arn   = module.lambda_tts.function_arn
+  video_lambda_arn = module.lambda_video.function_arn
+}
+
+# ============================================
+# API Gateway Module
+# ============================================
 module "api_gateway" {
   source = "./modules/api_gateway"
 
-  name_prefix                  = local.name_prefix
-  lambda_invoke_arn            = module.lambda_api.function_invoke_arn  # Assuming Lambda module outputs this
-  lambda_function_name         = module.lambda_api.function_name
-  cognito_user_pool_arn        = aws_cognito_user_pool.main.arn
-  stage_name                   = var.environment
+  name_prefix          = local.name_prefix
+  lambda_invoke_arn    = module.lambda_api.invoke_arn
+  lambda_function_name = module.lambda_api.function_name
+  cognito_user_pool_arn = module.cognito.user_pool_arn
+  stage_name           = var.environment
 
   depends_on = [
     module.lambda_api,
-    aws_cognito_user_pool.main
+    module.cognito
   ]
 }
 
-# CloudFront module for static assets
+# ============================================
+# CloudFront Module
+# ============================================
 module "cloudfront" {
   source = "./modules/cloudfront"
 
-  name_prefix                        = local.name_prefix
-  s3_bucket_id                       = aws_s3_bucket.webapp.id
-  s3_bucket_arn                      = aws_s3_bucket.webapp.arn
-  s3_bucket_regional_domain_name     = aws_s3_bucket.webapp.bucket_regional_domain_name
+  name_prefix                    = local.name_prefix
+  s3_bucket_id                   = module.s3.webapp_bucket_name
+  s3_bucket_arn                  = module.s3.webapp_bucket_arn
+  s3_bucket_regional_domain_name = "${module.s3.webapp_bucket_name}.s3.${var.aws_region}.amazonaws.com"
 
-  depends_on = [
-    aws_s3_bucket.webapp
-  ]
+  depends_on = [module.s3]
 }
 
-# Monitoring module for Lambda function alerts
+# ============================================
+# Monitoring Module
+# ============================================
 module "monitoring" {
   source = "./modules/monitoring"
 
-  name_prefix            = local.name_prefix
-  lambda_function_names  = [
+  name_prefix           = local.name_prefix
+  lambda_function_names = [
     module.lambda_api.function_name,
     module.lambda_agents.function_name,
     module.lambda_tts.function_name,
     module.lambda_video.function_name
   ]
-  sns_email              = var.notification_email
+  sns_email = var.budget_notification_email
 
   depends_on = [
     module.lambda_api,
@@ -193,20 +284,19 @@ module "monitoring" {
   ]
 }
 
-# Budget module for cost monitoring
+# ============================================
+# Budget Module
+# ============================================
 module "budget" {
   source = "./modules/budget"
 
   name_prefix        = local.name_prefix
   environment        = var.environment
-  budget_limit       = var.monthly_budget_limit
-  notification_email = var.notification_email
+  budget_limit       = var.budget_limit
+  notification_email = var.budget_notification_email
 
   depends_on = [
-    aws_s3_bucket.videos,
-    aws_s3_bucket.images,
-    aws_dynamodb_table.users,
-    aws_dynamodb_table.products,
-    aws_dynamodb_table.jobs
+    module.s3,
+    module.dynamodb
   ]
 }
