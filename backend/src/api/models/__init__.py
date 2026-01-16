@@ -24,6 +24,7 @@ from src.api.models.jobs import (
 )
 from src.api.models.products import (
     CreateProductRequest,
+    ImageUploadedResponse,
     ImageUploadRequest,
     ImageUploadResponse,
     ProductResponse,
@@ -47,6 +48,7 @@ __all__ = [
     "ProductResponse",
     "ImageUploadRequest",
     "ImageUploadResponse",
+    "ImageUploadedResponse",
     # Jobs
     "CreateJobRequest",
     "RegenerateJobRequest",

@@ -58,7 +58,7 @@ class UpdateProductRequest(BaseModel):
 
 class ProductResponse(BaseModel):
     """Product response."""
-    
+
     product_id: str
     user_id: str
     title: str
@@ -68,3 +68,10 @@ class ProductResponse(BaseModel):
     image_urls: list[str] = Field(default_factory=list, description="Presigned download URLs")
     created_at: str
     updated_at: str
+
+
+class ImageUploadedResponse(BaseModel):
+    """Response after direct image upload."""
+
+    image_id: str = Field(..., description="Cache-generated image ID")
+    product_id: str
