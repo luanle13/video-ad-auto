@@ -1,4 +1,5 @@
 """Unit tests for VideoService."""
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -16,12 +17,17 @@ def video_service():
 
 @pytest.mark.asyncio
 async def test_generate_video_with_audio(video_service):
-    """Test generate_video creates video (audio_s3_key is ignored now)."""
-    with patch.object(video_service, '_get_kling_client') as mock_get_client:
+    """Test generate_video successfully creates video with audio."""
+    with patch.object(video_service, '_get_kling_client') as mock_get_client, \
+         patch('src.workers.services.video_service.get_storage') as mock_get_storage:
 
         # Setup mocks
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
+
+        mock_storage = MagicMock()
+        mock_storage.generate_download_url.return_value = "https://example.com/audio.mp3"
+        mock_get_storage.return_value = mock_storage
 
         # Mock the generate_and_wait response
         mock_job_response = MagicMock(spec=KlingJobResponse)
@@ -33,7 +39,7 @@ async def test_generate_video_with_audio(video_service):
         result = await video_service.generate_video(
             prompt="A cat playing with a ball",
             config={"duration": 5, "resolution": "1080x720"},
-            audio_s3_key="user123/job456/voiceover.mp3"  # Now ignored
+            audio_s3_key="user123/job456/voiceover.mp3"
         )
 
         # Verify the result
@@ -42,11 +48,11 @@ async def test_generate_video_with_audio(video_service):
         assert result.job_response == mock_job_response
         assert result.duration_seconds == 5.0  # From config
 
-        # Verify the client method was called correctly (audio_url should be None)
+        # Verify the client method was called correctly
         mock_client.generate_and_wait.assert_called_once_with(
             prompt="A cat playing with a ball",
             config={"duration": 5, "resolution": "1080x720"},
-            audio_url=None,  # Audio URL support removed
+            audio_url="https://example.com/audio.mp3",
             progress_callback=None,
         )
 

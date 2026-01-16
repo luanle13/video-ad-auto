@@ -15,6 +15,7 @@ from src.shared.exceptions import (
 from src.shared.logging import configure_logging, get_logger
 from src.shared.secrets import SecretsManager, get_secrets
 from src.shared.stepfunctions import get_execution_status, get_sfn_client, start_execution
+from src.shared.storage import S3Client, get_storage
 from src.shared.validators import (
     ALLOWED_IMAGE_TYPES,
     ALLOWED_VIDEO_TYPES,
@@ -61,6 +62,9 @@ __all__ = [
     "get_execution_status",
     "get_sfn_client",
     "start_execution",
+    # Storage
+    "S3Client",
+    "get_storage",
     # Validators
     "ALLOWED_IMAGE_TYPES",
     "ALLOWED_VIDEO_TYPES",

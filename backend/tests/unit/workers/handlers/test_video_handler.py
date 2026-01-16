@@ -1,4 +1,5 @@
 """Unit tests for Video Lambda handler focusing on specific requirements."""
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -22,16 +23,17 @@ async def test_handler_success():
     }
 
     with patch('src.workers.handlers.video_handler.get_db') as mock_get_db, \
-         patch('src.workers.handlers.video_handler.get_cache_service') as mock_get_cache_service, \
+         patch('src.workers.handlers.video_handler.get_storage') as mock_get_storage, \
          patch('src.workers.handlers.video_handler.get_video_service') as mock_get_video_service:
 
         # Setup mocks
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        mock_cache = MagicMock()
-        mock_get_cache_service.return_value = mock_cache
-        mock_cache.store_video.return_value = True
+        mock_storage = MagicMock()
+        mock_get_storage.return_value = mock_storage
+        mock_storage.generate_video_key.return_value = "user123/job456/output.mp4"
+        mock_storage.upload_file.return_value = "s3://bucket/user123/job456/output.mp4"
 
         mock_video_service = AsyncMock()
         mock_get_video_service.return_value = mock_video_service
@@ -51,17 +53,10 @@ async def test_handler_success():
 
         # Verify the result
         assert result["success"] is True
-        assert result["video_s3_key"] is None  # Video stored in cache
-        assert result["video_s3_url"] is None  # Video stored in cache
+        assert result["video_s3_key"] == "user123/job456/output.mp4"
+        assert result["video_s3_url"] == "s3://bucket/user123/job456/output.mp4"
         assert result["duration_seconds"] == 5.0
         assert result["error"] is None
-
-        # Verify video was stored in cache
-        mock_cache.store_video.assert_called_once_with(
-            user_id="user123",
-            job_id="job456",
-            data=b"fake video content",
-        )
 
 
 @pytest.mark.asyncio
@@ -75,15 +70,15 @@ async def test_handler_timeout_error():
     }
 
     with patch('src.workers.handlers.video_handler.get_db') as mock_get_db, \
-         patch('src.workers.handlers.video_handler.get_cache_service') as mock_get_cache_service, \
+         patch('src.workers.handlers.video_handler.get_storage') as mock_get_storage, \
          patch('src.workers.handlers.video_handler.get_video_service') as mock_get_video_service:
 
         # Setup mocks
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        mock_cache = MagicMock()
-        mock_get_cache_service.return_value = mock_cache
+        mock_storage = MagicMock()
+        mock_get_storage.return_value = mock_storage
 
         mock_video_service = AsyncMock()
         mock_get_video_service.return_value = mock_video_service
@@ -113,16 +108,17 @@ async def test_job_marked_complete():
     }
 
     with patch('src.workers.handlers.video_handler.get_db') as mock_get_db, \
-         patch('src.workers.handlers.video_handler.get_cache_service') as mock_get_cache_service, \
+         patch('src.workers.handlers.video_handler.get_storage') as mock_get_storage, \
          patch('src.workers.handlers.video_handler.get_video_service') as mock_get_video_service:
 
         # Setup mocks
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        mock_cache = MagicMock()
-        mock_get_cache_service.return_value = mock_cache
-        mock_cache.store_video.return_value = True
+        mock_storage = MagicMock()
+        mock_get_storage.return_value = mock_storage
+        mock_storage.generate_video_key.return_value = "user123/job456/output.mp4"
+        mock_storage.upload_file.return_value = "s3://bucket/user123/job456/output.mp4"
 
         mock_video_service = AsyncMock()
         mock_get_video_service.return_value = mock_video_service
@@ -142,10 +138,10 @@ async def test_job_marked_complete():
 
         # Verify that job status was updated to COMPLETE
         calls = mock_db.update_job_status.call_args_list
-
+        
         # First call should be to GENERATING_VIDEO
         assert calls[0][1]["status"] == JobStatus.GENERATING_VIDEO.value
-
+        
         # Second call should be to COMPLETE
         assert calls[1][1]["status"] == JobStatus.COMPLETE.value
 
@@ -161,15 +157,15 @@ async def test_job_marked_failed_on_error():
     }
 
     with patch('src.workers.handlers.video_handler.get_db') as mock_get_db, \
-         patch('src.workers.handlers.video_handler.get_cache_service') as mock_get_cache_service, \
+         patch('src.workers.handlers.video_handler.get_storage') as mock_get_storage, \
          patch('src.workers.handlers.video_handler.get_video_service') as mock_get_video_service:
 
         # Setup mocks
         mock_db = MagicMock()
         mock_get_db.return_value = mock_db
 
-        mock_cache = MagicMock()
-        mock_get_cache_service.return_value = mock_cache
+        mock_storage = MagicMock()
+        mock_get_storage.return_value = mock_storage
 
         mock_video_service = AsyncMock()
         mock_get_video_service.return_value = mock_video_service
@@ -182,10 +178,10 @@ async def test_job_marked_failed_on_error():
 
         # Verify that job status was updated to FAILED
         calls = mock_db.update_job_status.call_args_list
-
+        
         # First call should be to GENERATING_VIDEO
         assert calls[0][1]["status"] == JobStatus.GENERATING_VIDEO.value
-
+        
         # Second call should be to FAILED
         assert calls[1][1]["status"] == JobStatus.FAILED.value
         assert "Video generation failed: Video generation failed" in calls[1][1]["error_message"]

@@ -79,13 +79,13 @@ class TestProductAnalyzerAgent:
         assert "You must respond with valid JSON" in agent.system_prompt
 
     @patch("src.agents.base.get_openai_client")
-    @patch("src.agents.product_analyzer.get_cache_service")
-    def test_run_success(self, mock_get_cache_service, mock_get_client):
+    @patch("src.agents.product_analyzer.get_storage")
+    def test_run_success(self, mock_get_storage, mock_get_client):
         """Test successful agent run."""
-        # Mock cache service
-        mock_cache = MagicMock()
-        mock_cache.get_image_base64.return_value = "data:image/jpeg;base64,ZmFrZSBpbWFnZSBkYXRh"
-        mock_get_cache_service.return_value = mock_cache
+        # Mock storage
+        mock_storage = MagicMock()
+        mock_storage.download_file.return_value = b"fake image data"
+        mock_get_storage.return_value = mock_storage
 
         # Mock OpenAI client
         mock_client = create_mock_openai_client()
@@ -121,12 +121,12 @@ class TestProductAnalyzerAgent:
         mock_client.chat_completion.assert_called_once()
 
     @patch("src.agents.base.get_openai_client")
-    @patch("src.agents.product_analyzer.get_cache_service")
-    def test_build_user_prompt(self, mock_get_cache_service, mock_get_client):
+    @patch("src.agents.product_analyzer.get_storage")
+    def test_build_user_prompt(self, mock_get_storage, mock_get_client):
         """Test building user prompt."""
-        mock_cache = MagicMock()
-        mock_cache.get_image_base64.return_value = "data:image/jpeg;base64,ZmFrZSBpbWFnZSBkYXRh"
-        mock_get_cache_service.return_value = mock_cache
+        mock_storage = MagicMock()
+        mock_storage.download_file.return_value = b"fake image data"
+        mock_get_storage.return_value = mock_storage
 
         agent = ProductAnalyzerAgent()
         input_data = ProductAnalyzerInput(
