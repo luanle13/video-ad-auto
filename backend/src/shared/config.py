@@ -35,11 +35,10 @@ class Settings(BaseSettings):
     dynamodb_products_table: str = "ai-video-products"
     dynamodb_jobs_table: str = "ai-video-jobs"
     
-    # Redis Cache
-    redis_url: str = "redis://localhost:6379/0"
-    cache_ttl: int = 3600
-    cache_image_ttl: int = 7200
-    cache_regen_ttl: int = 86400
+    # S3
+    s3_images_bucket: str = "ai-video-images"
+    s3_videos_bucket: str = "ai-video-videos"
+    s3_presigned_expiry: int = Field(default=900, description="Presigned URL expiry in seconds")
     
     # Cognito
     cognito_user_pool_id: str = ""
