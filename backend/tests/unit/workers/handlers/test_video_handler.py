@@ -16,6 +16,7 @@ async def test_handler_success():
         "user_id": "user123",
         "job_id": "job456",
         "video_prompt": "A cat playing with a ball",
+        "audio_s3_key": "user123/job456/voiceover.mp3",
         "aspect_ratio": "16:9",
         "duration": 5
     }
@@ -50,7 +51,8 @@ async def test_handler_success():
 
         # Verify the result
         assert result["success"] is True
-        assert result["video_cached"] is True
+        assert result["video_s3_key"] is None  # Video stored in cache
+        assert result["video_s3_url"] is None  # Video stored in cache
         assert result["duration_seconds"] == 5.0
         assert result["error"] is None
 
@@ -95,7 +97,8 @@ async def test_handler_timeout_error():
         # Verify the result
         assert result["success"] is False
         assert result["error"] == "Video generation timed out"
-        assert result["video_cached"] is False
+        assert result["video_s3_key"] is None
+        assert result["video_s3_url"] is None
         assert result["duration_seconds"] is None
 
 

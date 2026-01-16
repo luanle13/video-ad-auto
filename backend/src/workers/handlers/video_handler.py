@@ -20,6 +20,7 @@ class VideoHandlerInput(BaseModel):
         user_id: User who owns the job
         job_id: Job ID
         video_prompt: Text prompt describing the video to generate
+        audio_s3_key: Optional S3 key for audio file to accompany the video
         aspect_ratio: Aspect ratio for the video (e.g., "16:9", "9:16", "1:1")
         duration: Duration of the video in seconds
     """
@@ -27,6 +28,7 @@ class VideoHandlerInput(BaseModel):
     user_id: str = Field(..., description="User ID")
     job_id: str = Field(..., description="Job ID")
     video_prompt: str = Field(..., min_length=1, description="Text prompt for video generation")
+    audio_s3_key: str | None = Field(None, description="Optional S3 key for audio file")
     aspect_ratio: str = Field(default="16:9", description="Aspect ratio for video (e.g., '16:9', '9:16')")
     duration: int = Field(default=5, ge=1, le=60, description="Duration of video in seconds")
 
@@ -36,13 +38,15 @@ class VideoHandlerOutput(BaseModel):
 
     Attributes:
         success: Whether video generation succeeded
-        video_cached: Whether video was stored in cache (if success)
+        video_s3_key: S3 key where video is stored (if success)
+        video_s3_url: S3 URI (s3://bucket/key) for video (if success)
         duration_seconds: Actual duration of the generated video in seconds
         error: Error message (if failed)
     """
 
     success: bool = Field(..., description="Whether operation succeeded")
-    video_cached: bool = Field(default=False, description="Whether video is stored in cache")
+    video_s3_key: str | None = Field(None, description="S3 key for video file")
+    video_s3_url: str | None = Field(None, description="S3 URI for video")
     duration_seconds: float | None = Field(None, description="Actual video duration in seconds")
     error: str | None = Field(None, description="Error message if failed")
 
@@ -82,6 +86,7 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             user_id=input_data.user_id,
             job_id=input_data.job_id,
             prompt_length=len(input_data.video_prompt),
+            has_audio=bool(input_data.audio_s3_key),
         )
 
         # Update job status to GENERATING_VIDEO
@@ -111,6 +116,7 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
 
         result = await video_service.generate_video(
             prompt=input_data.video_prompt,
+            audio_s3_key=input_data.audio_s3_key,
             config=config,
         )
 
@@ -158,7 +164,8 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         # Return success output
         return VideoHandlerOutput(
             success=True,
-            video_cached=True,
+            video_s3_key=None,  # Video stored in cache
+            video_s3_url=None,  # Video stored in cache
             duration_seconds=result.duration_seconds,
         ).model_dump()
 
