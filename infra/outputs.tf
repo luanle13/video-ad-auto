@@ -67,3 +67,8 @@ output "lambda_video_arn" {
   description = "ARN of the Video Lambda function"
   value       = module.lambda_video.function_arn
 }
+
+output "ecr_repository_url" {
+  description = "ECR repository URL for Lambda container images"
+  value       = aws_ecr_repository.lambda.repository_url
+}

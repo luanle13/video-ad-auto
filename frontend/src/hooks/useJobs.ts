@@ -19,13 +19,14 @@ export const useJob = (id: string) => {
     queryKey: ['job', id],
     queryFn: () => getJobApi(id),
     enabled: !!id,
-    refetchInterval: (data) => {
+    refetchInterval: (query) => {
       // Refetch every 5 seconds if the job is in a processing state
-      if (data && 
-          (data.status === JobStatus.PROCESSING || 
-           data.status === JobStatus.ANALYZING || 
-           data.status === JobStatus.SCRIPTING || 
-           data.status === JobStatus.GENERATING_TTS || 
+      const data = query.state.data;
+      if (data &&
+          (data.status === JobStatus.PROCESSING ||
+           data.status === JobStatus.ANALYZING ||
+           data.status === JobStatus.SCRIPTING ||
+           data.status === JobStatus.GENERATING_TTS ||
            data.status === JobStatus.GENERATING_VIDEO)) {
         return 5000; // 5 seconds
       }

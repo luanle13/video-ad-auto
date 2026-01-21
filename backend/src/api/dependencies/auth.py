@@ -25,7 +25,7 @@ class CognitoAuth:
     def __init__(self) -> None:
         settings = get_settings()
         self._user_pool_id = settings.cognito_user_pool_id
-        self._app_client_id = settings.cognito_app_client_id
+        self._app_client_id = settings.cognito_client_id
         self._region = settings.cognito_region
         self._issuer = f"https://cognito-idp.{self._region}.amazonaws.com/{self._user_pool_id}"
         self._jwks_url = f"{self._issuer}/.well-known/jwks.json"
@@ -46,21 +46,27 @@ class CognitoAuth:
         try:
             # Get the signing key
             signing_key = self._jwks_client.get_signing_key_from_jwt(token)
-            
+
             # Decode and validate
+            # Note: Cognito access tokens have 'client_id' not 'aud', so we skip audience validation
+            # and manually verify client_id after decoding
             claims = jwt.decode(
                 token,
                 signing_key.key,
                 algorithms=["RS256"],
                 issuer=self._issuer,
-                audience=self._app_client_id,
                 options={"require": ["exp", "iss", "sub", "token_use"]},
             )
-            
-            # Verify token_use
+
+            # Verify token_use is "access"
             if claims.get("token_use") != "access":
                 raise InvalidTokenError()
-            
+
+            # Verify client_id matches our app (Cognito access tokens use client_id, not aud)
+            if claims.get("client_id") != self._app_client_id:
+                logger.warning("invalid_client_id", expected=self._app_client_id, got=claims.get("client_id"))
+                raise InvalidTokenError()
+
             return claims
             
         except jwt.ExpiredSignatureError:
@@ -72,7 +78,7 @@ class CognitoAuth:
     def register_user(self, email: str, password: str) -> str:
         """
         Register a new user in Cognito.
-        
+
         Returns:
             str: User ID (sub)
         """

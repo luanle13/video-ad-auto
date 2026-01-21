@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useUIStore } from '@/stores/uiStore';
-import { Menu, X, User, LogOut } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 
 const Header: React.FC = () => {
   const { user, logout } = useAuth();

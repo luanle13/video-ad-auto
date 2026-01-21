@@ -1,8 +1,6 @@
-import React, { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useJob } from '@/hooks/useJobs';
-import { useRegenerateJob } from '@/hooks/useJobs';
-import { useGetVideoDownloadUrl } from '@/hooks/useJobs'; // This hook doesn't exist yet, we'll need to create it
+import { useJob, useRegenerateJob } from '@/hooks/useJobs';
 import { JobStatus } from '@/types';
 import JobStatusBadge from '@/components/jobs/JobStatusBadge';
 import { JobProgress } from '@/components/jobs/JobProgress';
@@ -26,10 +24,10 @@ const VideoPreviewPage: React.FC = () => {
   const { jobId } = useParams<{ jobId: string }>();
   const navigate = useNavigate();
   const { data: job, isLoading, isError, refetch } = useJob(jobId!);
-  const { mutateAsync: regenerateJob, isLoading: isRegenerating } = useRegenerateJob();
+  const { mutateAsync: regenerateJob, isPending: isRegenerating } = useRegenerateJob();
   const { data: downloadUrlData } = useGetVideoDownloadUrl(jobId!);
-  
-  const [regenerateAdjustments, setRegenerateAdjustments] = React.useState({
+
+  const [regenerateAdjustments, setRegenerateAdjustments] = useState({
     background_style: '',
     tone: '',
     emphasis: '',
@@ -198,17 +196,21 @@ const VideoPreviewPage: React.FC = () => {
                     emphasis: e.target.value
                   }))}
                 />
-                <Input
-                  label="Additional Instructions"
-                  as="textarea"
-                  rows={3}
-                  placeholder="Any specific requirements for the video..."
-                  value={regenerateAdjustments.additional_instructions}
-                  onChange={(e) => setRegenerateAdjustments(prev => ({
-                    ...prev,
-                    additional_instructions: e.target.value
-                  }))}
-                />
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Additional Instructions
+                  </label>
+                  <textarea
+                    rows={3}
+                    placeholder="Any specific requirements for the video..."
+                    value={regenerateAdjustments.additional_instructions}
+                    onChange={(e) => setRegenerateAdjustments(prev => ({
+                      ...prev,
+                      additional_instructions: e.target.value
+                    }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
                 <div className="flex justify-end">
                   <Button
                     variant="primary"

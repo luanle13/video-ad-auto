@@ -3,13 +3,22 @@ resource "aws_lambda_function" "main" {
 
   role = aws_iam_role.lambda_role.arn
 
-  handler = var.handler
-  runtime = var.runtime
-  timeout = var.timeout
-  memory_size = var.memory_size
+  # For Zip deployments
+  handler = var.package_type == "Zip" ? var.handler : null
+  runtime = var.package_type == "Zip" ? var.runtime : null
 
-  s3_bucket = var.s3_bucket
-  s3_key    = var.s3_key
+  # Package type (Zip or Image)
+  package_type = var.package_type
+
+  # For Zip deployments - S3
+  s3_bucket = var.package_type == "Zip" ? var.s3_bucket : null
+  s3_key    = var.package_type == "Zip" ? var.s3_key : null
+
+  # For Image deployments - ECR
+  image_uri = var.package_type == "Image" ? var.image_uri : null
+
+  timeout     = var.timeout
+  memory_size = var.memory_size
 
   architectures = ["arm64"]
 
@@ -21,7 +30,15 @@ resource "aws_lambda_function" "main" {
     mode = "Active"
   }
 
-  layers = var.layers
+  layers = var.package_type == "Zip" ? var.layers : []
+
+  # For Image deployments - override CMD to set handler
+  dynamic "image_config" {
+    for_each = var.package_type == "Image" && var.image_command != null ? [1] : []
+    content {
+      command = var.image_command
+    }
+  }
 
   dynamic "vpc_config" {
     for_each = var.vpc_config != null ? [var.vpc_config] : []
@@ -32,8 +49,8 @@ resource "aws_lambda_function" "main" {
   }
 
   tags = {
-    Name        = var.function_name
-    Module      = "lambda"
+    Name   = var.function_name
+    Module = "lambda"
   }
 }
 

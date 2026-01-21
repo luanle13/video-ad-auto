@@ -1,6 +1,6 @@
 import React from 'react';
 import { useRequireAuth } from '@/hooks/useRequireAuth';
-import { Spinner } from '@/components/Spinner'; // Assuming we have a spinner component
+import Spinner from '@/components/ui/Spinner';
 
 const ProtectedRoute: React.FC<{ children?: React.ReactNode }> = ({ children }) => {
   const user = useRequireAuth();

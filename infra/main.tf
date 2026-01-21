@@ -79,6 +79,44 @@ module "secrets" {
 }
 
 # ============================================
+# ECR Repository for Lambda Container Images
+# ============================================
+resource "aws_ecr_repository" "lambda" {
+  name                 = "${local.name_prefix}-lambda"
+  image_tag_mutability = "MUTABLE"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name        = "${local.name_prefix}-lambda"
+    Environment = var.environment
+  }
+}
+
+resource "aws_ecr_lifecycle_policy" "lambda" {
+  repository = aws_ecr_repository.lambda.name
+
+  policy = jsonencode({
+    rules = [
+      {
+        rulePriority = 1
+        description  = "Keep last 5 images"
+        selection = {
+          tagStatus   = "any"
+          countType   = "imageCountMoreThan"
+          countNumber = 5
+        }
+        action = {
+          type = "expire"
+        }
+      }
+    ]
+  })
+}
+
+# ============================================
 # Lambda Functions
 # ============================================
 
@@ -87,13 +125,11 @@ module "lambda_api" {
   source = "./modules/lambda"
 
   function_name = "${local.name_prefix}-api-handler"
-  handler       = "src.lambda_api.handler"
-  runtime       = "python3.11"
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.lambda.repository_url}:latest"
+  image_command = ["src.lambda_api.handler"]
   timeout       = var.lambda_timeout
   memory_size   = var.lambda_memory_size
-
-  s3_bucket = aws_s3_bucket.deployment.bucket
-  s3_key    = "lambdas/api-handler.zip"
 
   environment_variables = {
     # Database configuration
@@ -113,12 +149,15 @@ module "lambda_api" {
     # Step Functions configuration (will be set via SSM)
     STEP_FUNCTIONS_STATE_MACHINE_ARN = module.stepfunctions.state_machine_arn
 
+    # Frontend URL for CORS
+    FRONTEND_URL = "https://${module.cloudfront.distribution_domain}"
+
     # Environment
     ENVIRONMENT  = var.environment
     PROJECT_NAME = var.project_name
   }
 
-  layers = []
+  depends_on = [aws_ecr_repository.lambda, module.cloudfront]
 }
 
 # Agents Lambda function module
@@ -126,13 +165,11 @@ module "lambda_agents" {
   source = "./modules/lambda"
 
   function_name = "${local.name_prefix}-agents-handler"
-  handler       = "src.lambda_agents.handler"
-  runtime       = "python3.11"
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.lambda.repository_url}:latest"
+  image_command = ["src.lambda_agents.handler"]
   timeout       = var.agent_lambda_timeout
   memory_size   = var.lambda_memory_size
-
-  s3_bucket = aws_s3_bucket.deployment.bucket
-  s3_key    = "lambdas/agents-handler.zip"
 
   environment_variables = {
     # API Keys (from Secrets Manager)
@@ -155,7 +192,7 @@ module "lambda_agents" {
     PROJECT_NAME = var.project_name
   }
 
-  layers = []
+  depends_on = [aws_ecr_repository.lambda]
 }
 
 # TTS Lambda function module
@@ -163,13 +200,11 @@ module "lambda_tts" {
   source = "./modules/lambda"
 
   function_name = "${local.name_prefix}-tts-handler"
-  handler       = "src.lambda_tts.handler"
-  runtime       = "python3.11"
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.lambda.repository_url}:latest"
+  image_command = ["src.lambda_tts.handler"]
   timeout       = 120  # TTS generation typically takes longer
   memory_size   = var.lambda_memory_size
-
-  s3_bucket = aws_s3_bucket.deployment.bucket
-  s3_key    = "lambdas/tts-handler.zip"
 
   environment_variables = {
     # API Keys (from Secrets Manager)
@@ -184,7 +219,7 @@ module "lambda_tts" {
     PROJECT_NAME = var.project_name
   }
 
-  layers = []
+  depends_on = [aws_ecr_repository.lambda]
 }
 
 # Video Lambda function module
@@ -193,13 +228,11 @@ module "lambda_video" {
   source = "./modules/lambda"
 
   function_name = "${local.name_prefix}-video-handler"
-  handler       = "src.lambda_video.handler"
-  runtime       = "python3.11"
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.lambda.repository_url}:latest"
+  image_command = ["src.lambda_video.handler"]
   timeout       = var.video_lambda_timeout
   memory_size   = var.lambda_memory_size
-
-  s3_bucket = aws_s3_bucket.deployment.bucket
-  s3_key    = "lambdas/video-handler.zip"
 
   environment_variables = {
     # API Keys (from Secrets Manager)
@@ -214,7 +247,292 @@ module "lambda_video" {
     PROJECT_NAME = var.project_name
   }
 
-  layers = []
+  depends_on = [aws_ecr_repository.lambda]
+}
+
+# ============================================
+# Additional IAM Policies for Lambda Functions
+# ============================================
+
+# API Lambda - Cognito permissions
+resource "aws_iam_role_policy" "api_lambda_cognito" {
+  name = "${local.name_prefix}-api-lambda-cognito-policy"
+  role = module.lambda_api.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "cognito-idp:SignUp",
+          "cognito-idp:InitiateAuth",
+          "cognito-idp:AdminConfirmSignUp",
+          "cognito-idp:AdminGetUser"
+        ]
+        Resource = module.cognito.user_pool_arn
+      }
+    ]
+  })
+}
+
+# API Lambda - DynamoDB permissions
+resource "aws_iam_role_policy" "api_lambda_dynamodb" {
+  name = "${local.name_prefix}-api-lambda-dynamodb-policy"
+  role = module.lambda_api.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem",
+          "dynamodb:Query",
+          "dynamodb:Scan"
+        ]
+        Resource = [
+          module.dynamodb.users_table_arn,
+          module.dynamodb.products_table_arn,
+          module.dynamodb.jobs_table_arn,
+          "${module.dynamodb.users_table_arn}/index/*",
+          "${module.dynamodb.products_table_arn}/index/*",
+          "${module.dynamodb.jobs_table_arn}/index/*"
+        ]
+      }
+    ]
+  })
+}
+
+# API Lambda - S3 permissions
+resource "aws_iam_role_policy" "api_lambda_s3" {
+  name = "${local.name_prefix}-api-lambda-s3-policy"
+  role = module.lambda_api.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:ListBucket"
+        ]
+        Resource = [
+          module.s3.images_bucket_arn,
+          "${module.s3.images_bucket_arn}/*",
+          module.s3.videos_bucket_arn,
+          "${module.s3.videos_bucket_arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# API Lambda - Step Functions permissions
+resource "aws_iam_role_policy" "api_lambda_stepfunctions" {
+  name = "${local.name_prefix}-api-lambda-stepfunctions-policy"
+  role = module.lambda_api.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "states:StartExecution",
+          "states:DescribeExecution",
+          "states:StopExecution"
+        ]
+        Resource = module.stepfunctions.state_machine_arn
+      }
+    ]
+  })
+
+  depends_on = [module.stepfunctions]
+}
+
+# Agents Lambda - DynamoDB permissions
+resource "aws_iam_role_policy" "agents_lambda_dynamodb" {
+  name = "${local.name_prefix}-agents-lambda-dynamodb-policy"
+  role = module.lambda_agents.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:Query"
+        ]
+        Resource = [
+          module.dynamodb.products_table_arn,
+          module.dynamodb.jobs_table_arn,
+          "${module.dynamodb.products_table_arn}/index/*",
+          "${module.dynamodb.jobs_table_arn}/index/*"
+        ]
+      }
+    ]
+  })
+}
+
+# Agents Lambda - S3 permissions
+resource "aws_iam_role_policy" "agents_lambda_s3" {
+  name = "${local.name_prefix}-agents-lambda-s3-policy"
+  role = module.lambda_agents.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject"
+        ]
+        Resource = [
+          "${module.s3.images_bucket_arn}/*",
+          "${module.s3.videos_bucket_arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# Agents Lambda - Secrets Manager permissions
+resource "aws_iam_role_policy" "agents_lambda_secrets" {
+  name = "${local.name_prefix}-agents-lambda-secrets-policy"
+  role = module.lambda_agents.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [
+          module.secrets.openai_secret_arn,
+          module.secrets.kling_secret_arn,
+          module.secrets.elevenlabs_secret_arn
+        ]
+      }
+    ]
+  })
+}
+
+# TTS Lambda - S3 permissions
+resource "aws_iam_role_policy" "tts_lambda_s3" {
+  name = "${local.name_prefix}-tts-lambda-s3-policy"
+  role = module.lambda_tts.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject"
+        ]
+        Resource = [
+          "${module.s3.videos_bucket_arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# TTS Lambda - Secrets Manager permissions
+resource "aws_iam_role_policy" "tts_lambda_secrets" {
+  name = "${local.name_prefix}-tts-lambda-secrets-policy"
+  role = module.lambda_tts.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [
+          module.secrets.elevenlabs_secret_arn
+        ]
+      }
+    ]
+  })
+}
+
+# TTS Lambda - Polly permissions
+resource "aws_iam_role_policy" "tts_lambda_polly" {
+  name = "${local.name_prefix}-tts-lambda-polly-policy"
+  role = module.lambda_tts.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "polly:SynthesizeSpeech"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
+# Video Lambda - S3 permissions
+resource "aws_iam_role_policy" "video_lambda_s3" {
+  name = "${local.name_prefix}-video-lambda-s3-policy"
+  role = module.lambda_video.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject"
+        ]
+        Resource = [
+          "${module.s3.images_bucket_arn}/*",
+          "${module.s3.videos_bucket_arn}/*"
+        ]
+      }
+    ]
+  })
+}
+
+# Video Lambda - Secrets Manager permissions
+resource "aws_iam_role_policy" "video_lambda_secrets" {
+  name = "${local.name_prefix}-video-lambda-secrets-policy"
+  role = module.lambda_video.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = [
+          module.secrets.kling_secret_arn
+        ]
+      }
+    ]
+  })
 }
 
 # ============================================

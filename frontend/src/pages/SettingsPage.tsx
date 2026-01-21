@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { useCredentials } from '@/hooks/useCredentials'; // This hook doesn't exist yet, we'll need to create it
+import React, { useState } from 'react';
 import CredentialForm from '@/components/settings/CredentialForm';
 import { toast } from 'react-hot-toast';
 
@@ -28,7 +27,7 @@ const useCredentials = () => {
     }
   };
   
-  const updateCredentials = async (platform: string, credentials: any) => {
+  const updateCredentials = async (platform: string, _credentials: unknown) => {
     setLoading(true);
     try {
       // Simulate API call

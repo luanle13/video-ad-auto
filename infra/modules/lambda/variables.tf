@@ -6,6 +6,13 @@ variable "function_name" {
 variable "handler" {
   description = "Function within your code that is called to start execution"
   type        = string
+  default     = null
+}
+
+variable "image_command" {
+  description = "CMD override for container-based Lambda (handler path)"
+  type        = list(string)
+  default     = null
 }
 
 variable "runtime" {
@@ -33,11 +40,25 @@ variable "environment_variables" {
 variable "s3_bucket" {
   description = "S3 bucket containing the deployment package"
   type        = string
+  default     = null
 }
 
 variable "s3_key" {
   description = "S3 key for the deployment package"
   type        = string
+  default     = null
+}
+
+variable "image_uri" {
+  description = "ECR image URI for container-based Lambda"
+  type        = string
+  default     = null
+}
+
+variable "package_type" {
+  description = "Lambda package type: Zip or Image"
+  type        = string
+  default     = "Zip"
 }
 
 variable "layers" {

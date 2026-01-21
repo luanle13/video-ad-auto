@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useProducts } from '@/hooks/useProducts';
-import { useCreateProduct } from '@/hooks/useProducts';
+import { useProducts, useCreateProduct } from '@/hooks/useProducts';
 import { useCreateJob } from '@/hooks/useJobs';
-import { ProductForm } from '@/components/products/ProductForm';
+import ProductForm from '@/components/products/ProductForm';
 import { Input } from '@/components/ui/Input';
 import { Button } from '@/components/ui/Button';
 import { toast } from 'react-hot-toast';
@@ -21,8 +20,8 @@ const CreateVideoPage: React.FC = () => {
   });
   
   const { data: products = [], isLoading: productsLoading } = useProducts();
-  const { mutateAsync: createProduct, isLoading: creatingProduct } = useCreateProduct();
-  const { mutateAsync: createJob, isLoading: creatingJob } = useCreateJob();
+  const { mutateAsync: createProduct, isPending: creatingProduct } = useCreateProduct();
+  const { mutateAsync: createJob, isPending: creatingJob } = useCreateJob();
   const navigate = useNavigate();
 
   const handleAdjustmentChange = (field: keyof JobAdjustments, value: any) => {
@@ -206,13 +205,15 @@ const CreateVideoPage: React.FC = () => {
         </div>
         
         <div className="mt-6">
-          <Input
-            label="Additional Instructions"
-            as="textarea"
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Additional Instructions
+          </label>
+          <textarea
             rows={4}
             placeholder="Any specific requirements for the video..."
             value={adjustments.additional_instructions}
             onChange={(e) => handleAdjustmentChange('additional_instructions', e.target.value)}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           />
         </div>
       </div>

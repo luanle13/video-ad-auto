@@ -1,4 +1,3 @@
-import React from 'react';
 import { Job, JobStatus } from '@/types';
 import { CheckCircle, Clock, Loader, Play, Mic, Video } from 'lucide-react';
 
@@ -50,8 +49,7 @@ export const JobProgress: React.FC<JobProgressProps> = ({ job }) => {
       {steps.map((step, index) => {
         const isCompleted = index < currentStepIndex;
         const isCurrent = index === currentStepIndex;
-        const isPending = index > currentStepIndex;
-        
+
         // Special handling for failed jobs
         if (isFailed && index > currentStepIndex) {
           return null; // Don't show steps after failure

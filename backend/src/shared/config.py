@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     
     # Cognito
     cognito_user_pool_id: str = ""
-    cognito_app_client_id: str = ""
+    cognito_client_id: str = ""  # Maps to COGNITO_CLIENT_ID env var
     cognito_region: str = "ap-southeast-1"
     
     # Step Functions

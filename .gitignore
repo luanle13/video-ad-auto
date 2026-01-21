@@ -126,3 +126,81 @@ env/
 /infra/*.tfstate.*
 /infra/*.tfvars
 /infra/.terraform.lock.hcl
+
+/backend/package/
+/backend/deployment.zip
+
+# Terraform outputs (contain AWS resource info)
+outputs.json
+outputs.txt
+infra/tfplan
+*.tfplan
+
+# Environment files with real values
+.env.local
+.env.production
+.env.development
+
+# IDE workspace settings
+*.code-workspace
+
+/backend/.mypy_cache/
+/backend/.ruff_cache/
+/backend/uv.lock
+/backend/.coverage
+/backend/htmlcov/
+/backend/.pytest_cache/
+
+/frontend/tsconfig.node.tsbuildinfo
+/frontend/tsconfig.tsbuildinfo
+/frontend/vite.config.d.ts
+/docker-compose.override.yml
+/docker-compose.prod.yml
+/volume/
+/secrets/
+/credentials/
+/config/keys.json
+/config/credentials.json
+/aws-secrets.json
+/tests/.pytest_cache/
+/tests/e2e/.pytest_cache/
+/tests/load/.pytest_cache/
+*.tfplan
+/infra/tfplan
+/.vscode/settings.json
+/.idea/
+*.env.local
+*.env.production
+*.env.staging
+/volume/
+/tmp/localstack/
+/backend/Dockerfile.build
+/backend/.dockerignore
+/logs/
+*.log
+*.bak
+*.backup
+*.orig
+*.DS_Store
+.AppleDouble
+# Local development databases
+*.db
+*.sqlite
+*.sqlite3
+
+# Temporary files
+*.tmp
+*.temp
+*~
+.#*
+
+# Processed/compiled assets
+/public/build/
+/dist-newstyle/
+/_build/
+
+# Local secrets
+*.key
+*.pem
+*.crt
+*.cert

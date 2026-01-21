@@ -64,8 +64,9 @@ apiClient.interceptors.response.use(
     }
 
     // Transform error to consistent format
+    const responseData = error.response?.data as { error?: string } | undefined;
     const errorResponse: ErrorResponse = {
-      error: error.response?.data?.error || error.message || 'An error occurred',
+      error: responseData?.error || error.message || 'An error occurred',
       code: error.response?.status?.toString() || 'UNKNOWN',
       details: error.response?.data || undefined,
     };

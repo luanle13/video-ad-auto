@@ -1,5 +1,5 @@
 import { useAuthStore } from '@/stores/authStore';
-import { login as loginApi, register as registerApi, saveTokens } from '@/api/auth';
+import { register as registerApi, saveTokens } from '@/api/auth';
 
 export const useAuth = () => {
   const { user, isAuthenticated, isLoading, login: storeLogin, logout, checkAuth } = useAuthStore();

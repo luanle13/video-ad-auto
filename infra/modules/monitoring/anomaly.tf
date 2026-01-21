@@ -1,3 +1,12 @@
+# Cost Explorer Anomaly Monitors - DISABLED
+# These resources require Cost Explorer to be enabled at the AWS account level.
+# To enable: AWS Console > Billing > Cost Explorer > Enable Cost Explorer
+# Once enabled, uncomment the resources below.
+
+# Note: Cost Explorer requires account-level activation and has its own pricing.
+# After enabling, wait 24 hours for data to become available before creating monitors.
+
+/*
 # Cost Anomaly Monitor - Detects unusual spending patterns by service
 resource "aws_ce_anomaly_monitor" "main" {
   name              = "${var.name_prefix}-cost-monitor"
@@ -91,3 +100,4 @@ resource "aws_ce_anomaly_subscription" "lambda" {
     Module = "monitoring"
   }
 }
+*/

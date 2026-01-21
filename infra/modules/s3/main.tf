@@ -108,7 +108,7 @@ resource "aws_s3_bucket_lifecycle_configuration" "videos" {
     }
 
     transition {
-      days          = 7
+      days          = 30
       storage_class = "STANDARD_IA"
     }
   }

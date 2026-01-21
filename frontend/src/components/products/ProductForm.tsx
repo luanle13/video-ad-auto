@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import ImageUpload from './ImageUpload';
-import { toast } from 'react-hot-toast';
 
 // Define the Zod schema for validation
 const productSchema = z.object({
@@ -82,16 +81,22 @@ const ProductForm: React.FC<ProductFormProps> = ({ onSubmit, isLoading = false }
           })}
         />
 
-        <Input
-          label="Description"
-          as="textarea"
-          rows={4}
-          placeholder="Enter product description"
-          error={errors.description?.message}
-          {...register('description', { 
-            onChange: (e) => setValue('description', e.target.value, { shouldValidate: true })
-          })}
-        />
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">
+            Description
+          </label>
+          <textarea
+            rows={4}
+            placeholder="Enter product description"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+            {...register('description', {
+              onChange: (e) => setValue('description', e.target.value, { shouldValidate: true })
+            })}
+          />
+          {errors.description?.message && (
+            <p className="mt-1 text-sm text-error-600">{errors.description.message}</p>
+          )}
+        </div>
 
         <Input
           label="Price ($)"

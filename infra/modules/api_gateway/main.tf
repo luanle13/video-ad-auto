@@ -28,15 +28,12 @@ resource "aws_api_gateway_resource" "proxy" {
   path_part   = "{proxy+}"
 }
 
-# ANY method for proxy resource with Cognito authorizer
+# ANY method for proxy resource - Lambda handles authentication
 resource "aws_api_gateway_method" "proxy_any" {
-  rest_api_id      = aws_api_gateway_rest_api.main.id
-  resource_id      = aws_api_gateway_resource.proxy.id
-  http_method      = "ANY"
-  authorization    = "COGNITO_USER_POOLS"  # Use Cognito authorizer
-  authorizer_id    = aws_api_gateway_authorizer.cognito.id
-
-  depends_on = [aws_api_gateway_authorizer.cognito]
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.proxy.id
+  http_method   = "ANY"
+  authorization = "NONE"  # Lambda handles auth validation for access tokens
 }
 
 # AWS_PROXY integration for proxy resource
@@ -79,10 +76,87 @@ resource "aws_api_gateway_integration" "health_int" {
   depends_on = [aws_api_gateway_method.health_get]
 }
 
+# Auth resource (no authentication required for register/login)
+resource "aws_api_gateway_resource" "auth" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_rest_api.main.root_resource_id
+  path_part   = "auth"
+}
+
+# Auth proxy resource to catch all auth paths (register, login, etc.)
+resource "aws_api_gateway_resource" "auth_proxy" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.auth.id
+  path_part   = "{proxy+}"
+}
+
+# ANY method for auth proxy (no authentication)
+resource "aws_api_gateway_method" "auth_any" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.auth_proxy.id
+  http_method   = "ANY"
+  authorization = "NONE"  # No authentication for auth endpoints
+}
+
+# AWS_PROXY integration for auth endpoints
+resource "aws_api_gateway_integration" "auth_int" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.auth_proxy.id
+  http_method             = aws_api_gateway_method.auth_any.http_method
+  type                    = "AWS_PROXY"
+  uri                     = var.lambda_invoke_arn
+  integration_http_method = "POST"
+
+  depends_on = [aws_api_gateway_method.auth_any]
+}
+
+# CORS support for auth endpoints
+resource "aws_api_gateway_method" "auth_options" {
+  rest_api_id   = aws_api_gateway_rest_api.main.id
+  resource_id   = aws_api_gateway_resource.auth_proxy.id
+  http_method   = "OPTIONS"
+  authorization = "NONE"
+}
+
+resource "aws_api_gateway_integration" "auth_options_int" {
+  rest_api_id             = aws_api_gateway_rest_api.main.id
+  resource_id             = aws_api_gateway_resource.auth_proxy.id
+  http_method             = aws_api_gateway_method.auth_options.http_method
+  type                    = "MOCK"
+  request_templates = {
+    "application/json" = "{\"statusCode\": 200}"
+  }
+}
+
+resource "aws_api_gateway_method_response" "auth_options_200" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.auth_proxy.id
+  http_method = aws_api_gateway_method.auth_options.http_method
+  status_code = "200"
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = true
+    "method.response.header.Access-Control-Allow-Methods" = true
+    "method.response.header.Access-Control-Allow-Origin"  = true
+  }
+}
+
+resource "aws_api_gateway_integration_response" "auth_options_int_response" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  resource_id = aws_api_gateway_resource.auth_proxy.id
+  http_method = aws_api_gateway_method.auth_options.http_method
+  status_code = aws_api_gateway_method_response.auth_options_200.status_code
+
+  response_parameters = {
+    "method.response.header.Access-Control-Allow-Headers" = "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
+    "method.response.header.Access-Control-Allow-Methods" = "'GET,POST,PUT,DELETE,OPTIONS'"
+    "method.response.header.Access-Control-Allow-Origin"  = "'*'"
+  }
+}
+
 # Deployment resource
 resource "aws_api_gateway_deployment" "main" {
   rest_api_id = aws_api_gateway_rest_api.main.id
-  stage_name  = var.stage_name  # Use stage name from variables
 
   # Trigger redeployment when resources change
   triggers = {
@@ -91,13 +165,21 @@ resource "aws_api_gateway_deployment" "main" {
       aws_api_gateway_integration.proxy_int.id,
       aws_api_gateway_method.health_get.id,
       aws_api_gateway_integration.health_int.id,
+      aws_api_gateway_method.auth_any.id,
+      aws_api_gateway_integration.auth_int.id,
     ]))
   }
 
   depends_on = [
     aws_api_gateway_integration.proxy_int,
     aws_api_gateway_integration.health_int,
+    aws_api_gateway_integration.auth_int,
+    aws_api_gateway_integration_response.auth_options_int_response,
   ]
+
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 # Stage resource
@@ -106,31 +188,12 @@ resource "aws_api_gateway_stage" "main" {
   rest_api_id   = aws_api_gateway_rest_api.main.id
   deployment_id = aws_api_gateway_deployment.main.id
 
-  # Enable detailed metrics for monitoring
+  # Enable X-Ray tracing for monitoring
   xray_tracing_enabled = true
 
-  # Access log settings
-  access_log_settings {
-    destination_arn = aws_cloudwatch_log_group.api_access_logs.arn
-    format = jsonencode({
-      requestId      = "$context.requestId"
-      ip             = "$context.identity.sourceIp"
-      caller         = "$context.identity.caller"
-      userAgent      = "$context.identity.userAgent"
-      requestTime    = "$context.requestTime"
-      httpMethod     = "$context.httpMethod"
-      resourcePath   = "$context.resourcePath"
-      status         = "$context.status"
-      protocol       = "$context.protocol"
-      responseLength = "$context.responseLength"
-    })
-  }
-
-  # Throttling settings
-  variables = {
-    throttling_burst_limit = 5000
-    throttling_rate_limit  = 10000
-  }
+  # Note: Access logging requires CloudWatch Logs role to be set at account level
+  # AWS Console > API Gateway > Settings > CloudWatch log role ARN
+  # Once configured, uncomment access_log_settings below
 
   tags = {
     Name        = "${var.name_prefix}-${var.stage_name}"

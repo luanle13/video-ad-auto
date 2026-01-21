@@ -36,19 +36,15 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 def _get_cors_origins(settings) -> list[str]:
     """Get allowed CORS origins based on environment."""
-    # Development origins
-    dev_origins = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173",
-    ]
-
+    # In development, allow all origins for easier testing
     if settings.environment == "dev":
-        return dev_origins
+        return ["*"]
 
     # Production origins from environment
-    prod_origins = []
+    prod_origins = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+    ]
     if settings.frontend_url:
         prod_origins.append(settings.frontend_url)
 
@@ -66,14 +62,17 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
         docs_url="/docs" if settings.debug else None,
         redoc_url="/redoc" if settings.debug else None,
+        redirect_slashes=False,  # Don't redirect /jobs to /jobs/ (breaks with API Gateway)
     )
 
-    # CORS middleware - hardened configuration
+    # CORS middleware configuration
     cors_origins = _get_cors_origins(settings)
+    # Note: allow_credentials cannot be True when origins is ["*"]
+    allow_credentials = "*" not in cors_origins
     app.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
-        allow_credentials=True,
+        allow_credentials=allow_credentials,
         allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
         max_age=600,  # Cache preflight requests for 10 minutes

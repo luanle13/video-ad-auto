@@ -10,11 +10,11 @@ from src.shared.exceptions import ValidationError
 from src.shared.logging import get_logger
 from src.shared.secrets import get_secrets, get_user_credentials_secret_name
 
-router = APIRouter(prefix="/credentials", tags=["Credentials"])
+router = APIRouter()
 logger = get_logger(__name__)
 
 
-@router.put("/", response_model=PlatformCredentialsResponse)
+@router.put("", response_model=PlatformCredentialsResponse)
 async def update_credentials(
     request: PlatformCredentialsRequest,
     current_user: AuthenticatedUser,
@@ -60,7 +60,7 @@ async def update_credentials(
     )
 
 
-@router.get("/", response_model=PlatformCredentialsResponse)
+@router.get("", response_model=PlatformCredentialsResponse)
 async def get_credentials_status(
     current_user: AuthenticatedUser,
 ) -> PlatformCredentialsResponse:

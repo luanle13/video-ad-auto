@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist, StateStorage } from 'zustand/middleware';
+import { persist, createJSONStorage } from 'zustand/middleware';
 import { User } from '@/types';
 import { login as loginApi, getMe, logout as logoutApi, saveTokens, clearTokens, getAccessToken } from '@/api/auth';
 
@@ -13,22 +13,9 @@ interface AuthState {
   checkAuth: () => Promise<void>;
 }
 
-const storage: StateStorage = {
-  getItem: (name) => {
-    const str = localStorage.getItem(name);
-    return str ? JSON.parse(str) : null;
-  },
-  setItem: (name, value) => {
-    localStorage.setItem(name, JSON.stringify(value));
-  },
-  removeItem: (name) => {
-    localStorage.removeItem(name);
-  },
-};
-
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       isAuthenticated: false,
       isLoading: true,
@@ -86,7 +73,7 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      storage,
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );

@@ -87,7 +87,7 @@ resource "aws_cloudfront_distribution" "main" {
   }
 }
 
-# S3 Bucket Policy to allow CloudFront to access the bucket
+# S3 Bucket Policy to allow CloudFront OAI to access the bucket
 resource "aws_s3_bucket_policy" "main" {
   bucket = var.s3_bucket_id
 
@@ -95,18 +95,13 @@ resource "aws_s3_bucket_policy" "main" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "AllowCloudFrontServicePrincipal"
+        Sid    = "AllowCloudFrontOAI"
         Effect = "Allow"
         Principal = {
-          Service = "cloudfront.amazonaws.com"
+          AWS = aws_cloudfront_origin_access_identity.main.iam_arn
         }
         Action   = "s3:GetObject"
         Resource = "${var.s3_bucket_arn}/*"
-        Condition = {
-          StringEquals = {
-            "AWS:SourceArn" = aws_cloudfront_origin_access_identity.main.iam_arn
-          }
-        }
       }
     ]
   })

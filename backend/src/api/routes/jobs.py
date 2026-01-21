@@ -18,7 +18,7 @@ from src.shared.exceptions import ValidationError, NotFoundError
 from src.shared.logging import get_logger
 from src.shared.storage import get_storage
 
-router = APIRouter(prefix="/jobs", tags=["Jobs"])
+router = APIRouter()
 logger = get_logger(__name__)
 
 
@@ -55,7 +55,7 @@ def _job_to_response(job: dict, storage_client) -> JobResponse:
     )
 
 
-@router.post("/", response_model=JobResponse)
+@router.post("", response_model=JobResponse)
 async def create_job(
     request: CreateJobRequest,
     current_user: AuthenticatedUser,
@@ -125,7 +125,7 @@ async def create_job(
     return _job_to_response(job, storage)
 
 
-@router.get("/", response_model=JobListResponse)
+@router.get("", response_model=JobListResponse)
 async def list_jobs(
     current_user: AuthenticatedUser,
     status: JobStatus | None = None,
