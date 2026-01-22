@@ -52,31 +52,37 @@ class Settings(BaseSettings):
     secrets_openai_key: str = "ai-video/openai-api-key"
     secrets_kling_key: str = "ai-video/kling-api-key"
     secrets_elevenlabs_key: str = "ai-video/elevenlabs-api-key"
+    secrets_piapi_key: str = "ai-video/piapi-api-key"
+    secrets_azure_image_key: str = "ai-video/azure-image-api-key"
 
-    # OpenAI Configuration
+    # OpenAI Configuration (Azure OpenAI)
     openai_model: str = "gpt-4o"
     openai_max_tokens: int = 4096
     openai_temperature: float = 0.7
 
-    # External APIs (loaded from Secrets Manager at runtime, not env)
-    # These are placeholders for local development only
-    openai_api_key: SecretStr | None = None
+    # External APIs (loaded from environment for Azure)
+    openai_api_key: SecretStr | None = None  # Deprecated - use Azure
     kling_api_key: SecretStr | None = None
     elevenlabs_api_key: SecretStr | None = None
     
     # Rate limits
     max_images_per_product: int = 5
     max_image_size_mb: int = 5
-    max_video_duration_seconds: int = 60
+    max_video_duration_seconds: int = 20  # Updated for 15-20s kitchen product videos
     
     # Timeouts
     agent_timeout_seconds: int = 180
     tts_timeout_seconds: int = 120
     video_generation_timeout_seconds: int = 600
     
-    # Azure OpenAI
+    # Azure OpenAI (for both GPT-4o and FLUX-1.1-pro)
     azure_openai_api_key: SecretStr | None = None
-    azure_openai_endpoint: str | None = None
+    azure_openai_endpoint: str | None = None  # e.g., https://your-resource.openai.azure.com/openai/v1/
+    azure_gpt_deployment_name: str = "gpt-4.1"  # Deployment name for GPT model
+    azure_flux_deployment_name: str = "FLUX-1.1-pro"  # Deployment name for FLUX-1.1-pro
+    
+    # PiAPI (for Wan 2.6 video generation)
+    piapi_api_key: SecretStr | None = None
 
 
 @lru_cache

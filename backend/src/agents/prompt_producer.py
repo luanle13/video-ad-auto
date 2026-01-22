@@ -102,7 +102,7 @@ class PromptProducerAgent(BaseAgent):
 
     name = "PromptProducer"
     description = "Generates optimized prompts for AI video generation from scripts"
-    model = "gpt-4o"
+    model = None  # Uses deployment name from settings
     max_tokens = 2500
     temperature = 0.4  # Lower temperature for consistent prompts
 

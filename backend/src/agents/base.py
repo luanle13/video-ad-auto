@@ -32,7 +32,7 @@ class BaseAgent(ABC):
 
     name: str = "BaseAgent"
     description: str = ""
-    model: str = "gpt-4o"
+    model: str | None = None  # Uses deployment name from settings
     max_tokens: int = 4096
     temperature: float = 0.7
 

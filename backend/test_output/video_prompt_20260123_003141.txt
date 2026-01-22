@@ -1,0 +1,45 @@
+======================================================================
+SPLIT VIDEO GENERATION - VEO3 / PIAPI
+======================================================================
+
+STRATEGY: Generate 2 videos and combine with extend feature
+Total Duration: 18s = Video 1 (9s) + Video 2 (9s)
+
+======================================================================
+VIDEO 1 (FIRST HALF)
+======================================================================
+Start Image: opening_frame_20260123_003141.png
+Duration: 9 seconds
+
+PROMPT:
+----------------------------------------
+A fast-paced, photorealistic kitchen sequence. Start with a POV shot as a hand pours ice cubes into the ProBlend 3000’s clear pitcher, the ice clattering onto the stainless steel base. Extreme close-up as the LED power button is pressed, illuminating the control panel. Cut to a top-down view: the six stainless steel blades spin powerfully, pulverizing ice into a smooth texture in seconds, while hands steady the gently vibrating pitcher. Transition to a POV as hands add fresh spinach, colorful fruit, and almond milk into the pitcher, with measurement markings visible. Fingers rotate the glowing LED speed dial, ready to blend. All scenes are set in a modern, bright kitchen with a clean, aspirational feel. No faces, only hands and arms interacting with the product.
+----------------------------------------
+
+======================================================================
+VIDEO 2 (SECOND HALF - EXTEND FROM VIDEO 1)
+======================================================================
+Start Image (Bridge): bridge_frame_20260123_003141.png
+Duration: 9 seconds
+Mode: Extend from Video 1
+
+PROMPT:
+----------------------------------------
+Continue seamlessly from the bridge frame: Over-the-shoulder shot as the ProBlend 3000 pours a silky smoothie into a clear glass, hands steadying both pitcher and glass. Another hand gently wipes the spotless countertop, emphasizing no messy splashes. Cut to a side-by-side shot: the blender runs quietly next to a baby monitor showing a sleeping baby with 'Zzz' on screen, hands adjusting speed—demonstrating whisper-quiet operation. POV as a hand presses the self-clean button; close-up of the pitcher rinsing itself with swirling water. Final shot: cleaned blender parts are placed neatly in a dishwasher rack. End with the product hero shot and the call to action: 'Upgrade your kitchen. Tap to shop ProBlend 3000.'
+----------------------------------------
+
+======================================================================
+BRIDGE SCENE (TRANSITION POINT)
+======================================================================
+Image: bridge_frame_20260123_003141.png
+Description: The bridge frame represents the precise moment when all smoothie ingredients are added to the ProBlend 3000’s pitcher, and the user is about to start blending by turning the LED speed dial. It’s a natural transition from ingredient prep to the blending action, visually connecting the setup with the blending and serving steps that follow.
+
+======================================================================
+STYLE & CONTINUITY
+======================================================================
+Style: The visual style is photorealistic, modern, and premium, suitable for a mid-range appliance commercial. Lighting is bright and professional, with soft daylight and subtle highlights on stainless steel and glass surfaces. The color palette is dominated by silver, black, and white accents, with pops of natural color from fresh ingredients. All backgrounds are clean and uncluttered, with minimalist cabinetry and subtle kitchen elements in soft focus to keep attention on the blender. Camera angles alternate between POV, close-up, and over-the-shoulder for dynamic, energetic storytelling. No human faces are ever shown—only hands and arms in action.
+
+Continuity: Maintain consistent lighting, camera perspective, and kitchen background throughout both halves. The ProBlend 3000 should always be positioned on the same spot on the countertop, with the same LED panel glow and stainless steel reflections. Ingredient colors and arrangement in the pitcher must match exactly between end of video 1 and start of video 2. Hands should appear from similar angles, and all interactions should be natural and fluid. Any props (glass, baby monitor, dish rack) should remain consistent in style and placement. Ensure smooth visual transition at the bridge frame by freezing the action mid-pour and mid-dial turn.
+
+Negative Prompt:
+human faces, people, portraits, blurry, distorted, low quality, watermark, text

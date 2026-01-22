@@ -31,38 +31,54 @@ class ProductAnalyzerOutput(AgentOutput):
 
 
 class ProductAnalyzerAgent(BaseAgent):
-    """Analyzes product images and metadata to extract key information."""
+    """Analyzes kitchen product images and metadata for 15-20s video ads."""
 
     name = "ProductAnalyzer"
-    description = "Analyzes product images and metadata to extract features, USPs, and visual elements"
-    model = "gpt-4o"
+    description = "Analyzes kitchen product images and metadata for short-form video ads (15-20s)"
+    model = None  # Uses deployment name from settings
     max_tokens = 2048
     temperature = 0.3  # Lower temperature for analysis
 
     @property
     def system_prompt(self) -> str:
-        return """You are an expert product analyst specializing in e-commerce and video marketing.
+        return """You are an expert kitchen product analyst specializing in video marketing.
 
-Your task is to analyze product images and metadata to extract:
-1. Key features and specifications
-2. Unique selling points (USPs)
-3. Target audience characteristics
-4. Visual elements suitable for video content
+Your task is to analyze KITCHEN PRODUCT images and metadata to extract information 
+for creating a 15-20 SECOND video advertisement. The video will be:
+- Realistic animation style (no cartoon/anime)
+- No sound/voiceover (text overlays and visuals only)
+- No human faces (hands-only when showing product use)
+- Focus on product demonstration and features
+
+Analyze the product to extract:
+1. Key features and specifications (focus on visual demonstrable features)
+2. Unique selling points (USPs) that can be shown visually
+3. Target audience characteristics (home cooks, professionals, busy families, etc.)
+4. Visual elements suitable for silent video content
 5. Price positioning (budget/mid-range/premium)
-6. Suggested hooks for short-form video
+6. Suggested visual hooks for the first 3 seconds (no voiceover)
 
-Focus on aspects that would be compelling in a 30-60 second video ad.
+KITCHEN PRODUCT CATEGORIES to consider:
+- Appliances (blenders, air fryers, coffee makers, etc.)
+- Cookware (pots, pans, bakeware)
+- Utensils and tools (knives, cutting boards, gadgets)
+- Storage and organization
+- Small appliances (toasters, kettles, etc.)
+
+Focus on aspects that can be VISUALLY demonstrated in a 15-20 second silent video.
 
 You must respond with valid JSON using the following structure:
 {
-    "key_features": ["feature1", "feature2", ...],
-    "unique_selling_points": ["usp1", "usp2", ...],
+    "key_features": ["visual_feature1", "visual_feature2", ...],
+    "unique_selling_points": ["visual_usp1", "visual_usp2", ...],
     "target_audience": "description of target audience",
     "visual_elements": ["element1", "element2", ...],
-    "product_category": "category name",
+    "product_category": "kitchen category name",
     "price_positioning": "budget|mid-range|premium",
-    "suggested_hooks": ["hook1", "hook2", ...],
-    "raw_analysis": "detailed analysis text"
+    "suggested_hooks": ["visual_hook1", "visual_hook2", ...],
+    "raw_analysis": "detailed analysis focusing on visual appeal",
+    "demonstration_ideas": ["demo_idea1", "demo_idea2", ...],
+    "color_scheme": "dominant colors for style consistency"
 }"""
 
     def build_user_prompt(self, input_data: ProductAnalyzerInput, context: dict[str, Any]) -> str:
