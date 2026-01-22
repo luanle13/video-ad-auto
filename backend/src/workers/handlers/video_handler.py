@@ -100,10 +100,12 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         video_service = get_video_service()
 
         # Prepare config for video generation
+        # Note: Veo 3.1 Fast generates 8-second videos regardless of duration
         config = {
-            "duration": input_data.duration,
             "aspect_ratio": input_data.aspect_ratio,
-            "resolution": "1080x720"  # Default resolution
+            "resolution": "720p",  # Valid values: "720p" or "1080p"
+            "enhance_prompt": True,
+            "generate_audio": False,
         }
 
         # Generate video
@@ -114,9 +116,10 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             aspect_ratio=input_data.aspect_ratio,
         )
 
+        # Note: Veo 3.1 Fast doesn't use external audio or image input
+        # It can generate its own audio via the generate_audio config option
         result = await video_service.generate_video(
             prompt=input_data.video_prompt,
-            audio_s3_key=input_data.audio_s3_key,
             config=config,
         )
 
@@ -146,7 +149,7 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "video_s3_key": video_key,
             "video_s3_url": video_s3_url,
             "duration_seconds": result.duration_seconds,
-            "job_response": result.job_response.data,  # Store job response data
+            "job_response": result.job_response.model_dump(),  # Store job response data
         }
 
         db.update_job_step_output(

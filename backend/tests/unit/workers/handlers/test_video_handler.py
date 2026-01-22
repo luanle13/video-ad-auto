@@ -1,5 +1,4 @@
 """Unit tests for Video Lambda handler focusing on specific requirements."""
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -7,7 +6,7 @@ import pytest
 from src.api.models.jobs import JobStatus
 from src.workers.handlers.video_handler import VideoHandlerInput, VideoHandlerOutput, handler
 from src.workers.services.video_service import VideoResult
-from src.workers.clients.kling import KlingJobResponse
+from src.workers.clients.deepinfra import DeepInfraJobResponse
 
 
 @pytest.mark.asyncio
@@ -38,13 +37,16 @@ async def test_handler_success():
         mock_video_service = AsyncMock()
         mock_get_video_service.return_value = mock_video_service
 
-        # Mock the video generation result
-        mock_job_response = MagicMock(spec=KlingJobResponse)
-        mock_job_response.data = {"status": "completed", "id": "job-12345"}
+        # Mock the video generation result with DeepInfraJobResponse
+        mock_job_response = DeepInfraJobResponse(
+            status="ok",
+            videos=["https://example.com/video.mp4"],
+            request_id="req-12345",
+        )
         mock_video_result = VideoResult(
             video_data=b"fake video content",
             job_response=mock_job_response,
-            duration_seconds=5.0
+            duration_seconds=8.0  # Veo 3.1 generates 8-second videos
         )
         mock_video_service.generate_video.return_value = mock_video_result
 
@@ -55,7 +57,7 @@ async def test_handler_success():
         assert result["success"] is True
         assert result["video_s3_key"] == "user123/job456/output.mp4"
         assert result["video_s3_url"] == "s3://bucket/user123/job456/output.mp4"
-        assert result["duration_seconds"] == 5.0
+        assert result["duration_seconds"] == 8.0  # Veo 3.1 generates 8-second videos
         assert result["error"] is None
 
 
@@ -123,13 +125,16 @@ async def test_job_marked_complete():
         mock_video_service = AsyncMock()
         mock_get_video_service.return_value = mock_video_service
 
-        # Mock the video generation result
-        mock_job_response = MagicMock(spec=KlingJobResponse)
-        mock_job_response.data = {"status": "completed", "id": "job-12345"}
+        # Mock the video generation result with DeepInfraJobResponse
+        mock_job_response = DeepInfraJobResponse(
+            status="ok",
+            videos=["https://example.com/video.mp4"],
+            request_id="req-12345",
+        )
         mock_video_result = VideoResult(
             video_data=b"fake video content",
             job_response=mock_job_response,
-            duration_seconds=5.0
+            duration_seconds=8.0
         )
         mock_video_service.generate_video.return_value = mock_video_result
 
@@ -138,10 +143,10 @@ async def test_job_marked_complete():
 
         # Verify that job status was updated to COMPLETE
         calls = mock_db.update_job_status.call_args_list
-        
+
         # First call should be to GENERATING_VIDEO
         assert calls[0][1]["status"] == JobStatus.GENERATING_VIDEO.value
-        
+
         # Second call should be to COMPLETE
         assert calls[1][1]["status"] == JobStatus.COMPLETE.value
 
@@ -178,10 +183,10 @@ async def test_job_marked_failed_on_error():
 
         # Verify that job status was updated to FAILED
         calls = mock_db.update_job_status.call_args_list
-        
+
         # First call should be to GENERATING_VIDEO
         assert calls[0][1]["status"] == JobStatus.GENERATING_VIDEO.value
-        
+
         # Second call should be to FAILED
         assert calls[1][1]["status"] == JobStatus.FAILED.value
         assert "Video generation failed: Video generation failed" in calls[1][1]["error_message"]

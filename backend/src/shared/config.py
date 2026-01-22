@@ -54,6 +54,7 @@ class Settings(BaseSettings):
     secrets_elevenlabs_key: str = "ai-video/elevenlabs-api-key"
     secrets_piapi_key: str = "ai-video/piapi-api-key"
     secrets_azure_image_key: str = "ai-video/azure-image-api-key"
+    secrets_deepinfra_key: str = "ai-video/deepinfra-api-key"
 
     # OpenAI Configuration (Azure OpenAI)
     openai_model: str = "gpt-4o"
@@ -81,8 +82,11 @@ class Settings(BaseSettings):
     azure_gpt_deployment_name: str = "gpt-4.1"  # Deployment name for GPT model
     azure_flux_deployment_name: str = "FLUX-1.1-pro"  # Deployment name for FLUX-1.1-pro
     
-    # PiAPI (for Wan 2.6 video generation)
+    # PiAPI (for Wan 2.6 video generation) - deprecated, kept for compatibility
     piapi_api_key: SecretStr | None = None
+
+    # DeepInfra (for Veo 3.1 Fast video generation)
+    deepinfra_api_key: SecretStr | None = None
 
 
 @lru_cache

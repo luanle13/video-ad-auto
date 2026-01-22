@@ -158,9 +158,16 @@ class OpenAIContextLengthError(OpenAIError):
 
 class KlingError(ExternalServiceError):
     """Kling AI error."""
-    
+
     def __init__(self, message: str) -> None:
         super().__init__("Kling", message)
+
+
+class DeepInfraError(ExternalServiceError):
+    """DeepInfra API error."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__("DeepInfra", message)
 
 
 class PiAPIError(ExternalServiceError):

@@ -1,11 +1,10 @@
 """Unit tests for VideoService."""
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from src.shared.exceptions import KlingError
-from src.workers.clients.kling import KlingJobResponse
+from src.shared.exceptions import DeepInfraError
+from src.workers.clients.deepinfra import DeepInfraJobResponse
 from src.workers.services.video_service import VideoResult, VideoService
 
 
@@ -16,116 +15,216 @@ def video_service():
 
 
 @pytest.mark.asyncio
-async def test_generate_video_with_audio(video_service):
-    """Test generate_video successfully creates video with audio."""
-    with patch.object(video_service, '_get_kling_client') as mock_get_client, \
-         patch('src.workers.services.video_service.get_storage') as mock_get_storage:
+async def test_generate_video_basic(video_service):
+    """Test generate_video successfully creates video."""
+    with patch.object(video_service, '_get_deepinfra_client') as mock_get_client:
 
         # Setup mocks
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
 
-        mock_storage = MagicMock()
-        mock_storage.generate_download_url.return_value = "https://example.com/audio.mp3"
-        mock_get_storage.return_value = mock_storage
-
-        # Mock the generate_and_wait response
-        mock_job_response = MagicMock(spec=KlingJobResponse)
-        mock_job_response.job_id = "job-12345"
+        # Mock the generate_and_download response
+        mock_job_response = DeepInfraJobResponse(
+            status="ok",
+            videos=["https://example.com/video.mp4"],
+            request_id="req-12345",
+        )
         video_data = b"fake video content"
-        mock_client.generate_and_wait.return_value = (mock_job_response, video_data)
+        mock_client.generate_and_download.return_value = (mock_job_response, video_data)
 
         # Call the method
         result = await video_service.generate_video(
             prompt="A cat playing with a ball",
-            config={"duration": 5, "resolution": "1080x720"},
-            audio_s3_key="user123/job456/voiceover.mp3"
+            config={"resolution": "720p", "aspect_ratio": "9:16"},
         )
 
         # Verify the result
         assert isinstance(result, VideoResult)
         assert result.video_data == video_data
         assert result.job_response == mock_job_response
-        assert result.duration_seconds == 5.0  # From config
+        assert result.duration_seconds == 8.0  # Veo 3.1 generates 8-second videos
 
         # Verify the client method was called correctly
-        mock_client.generate_and_wait.assert_called_once_with(
-            prompt="A cat playing with a ball",
-            config={"duration": 5, "resolution": "1080x720"},
-            audio_url="https://example.com/audio.mp3",
-            progress_callback=None,
-        )
+        mock_client.generate_and_download.assert_called_once()
+        call_args = mock_client.generate_and_download.call_args
+        assert call_args.kwargs["prompt"] == "A cat playing with a ball"
 
 
 @pytest.mark.asyncio
-async def test_generate_video_without_audio(video_service):
-    """Test generate_video successfully creates video without audio."""
-    with patch.object(video_service, '_get_kling_client') as mock_get_client:
+async def test_generate_video_with_opening_frame_logged(video_service):
+    """Test generate_video logs when opening_frame_url is provided but not used."""
+    with patch.object(video_service, '_get_deepinfra_client') as mock_get_client, \
+         patch('src.workers.services.video_service.logger') as mock_logger:
 
         # Setup mocks
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
 
-        # Mock the generate_and_wait response
-        mock_job_response = MagicMock(spec=KlingJobResponse)
-        mock_job_response.job_id = "job-12345"
+        # Mock the generate_and_download response
+        mock_job_response = DeepInfraJobResponse(
+            status="ok",
+            videos=["https://example.com/video.mp4"],
+            request_id="req-12345",
+        )
         video_data = b"fake video content"
-        mock_client.generate_and_wait.return_value = (mock_job_response, video_data)
+        mock_client.generate_and_download.return_value = (mock_job_response, video_data)
 
-        # Call the method without audio
+        # Call the method with opening_frame_url
         result = await video_service.generate_video(
             prompt="A cat playing with a ball",
-            config={"duration": 10, "resolution": "720x480"}
+            opening_frame_url="https://example.com/frame.jpg",
+            config={"resolution": "720p"},
         )
 
         # Verify the result
         assert isinstance(result, VideoResult)
         assert result.video_data == video_data
-        assert result.job_response == mock_job_response
-        assert result.duration_seconds == 10.0  # From config
 
-        # Verify the client method was called correctly (audio_url should be None)
-        mock_client.generate_and_wait.assert_called_once_with(
-            prompt="A cat playing with a ball",
-            config={"duration": 10, "resolution": "720x480"},
-            audio_url=None,
-            progress_callback=None,
+        # Verify log was called about opening_frame_url not being used
+        mock_logger.info.assert_any_call(
+            "opening_frame_url_provided_but_not_used",
+            reason="Veo 3.1 Fast is text-to-video only; image input not supported",
         )
 
 
 @pytest.mark.asyncio
-async def test_progress_callback_called(video_service):
-    """Test progress callback is called during video generation."""
-    with patch.object(video_service, '_get_kling_client') as mock_get_client:
+async def test_generate_video_uses_default_config(video_service):
+    """Test generate_video uses default config when none provided."""
+    with patch.object(video_service, '_get_deepinfra_client') as mock_get_client:
 
         # Setup mocks
         mock_client = AsyncMock()
         mock_get_client.return_value = mock_client
 
-        # Mock the generate_and_wait response
-        mock_job_response = MagicMock(spec=KlingJobResponse)
-        mock_job_response.job_id = "job-12345"
+        # Mock the generate_and_download response
+        mock_job_response = DeepInfraJobResponse(
+            status="ok",
+            videos=["https://example.com/video.mp4"],
+            request_id="req-12345",
+        )
         video_data = b"fake video content"
-        mock_client.generate_and_wait.return_value = (mock_job_response, video_data)
+        mock_client.generate_and_download.return_value = (mock_job_response, video_data)
 
-        # Create a progress callback
-        progress_callback = AsyncMock()
-
-        # Call the method with progress callback
+        # Call the method without config
         result = await video_service.generate_video(
             prompt="A cat playing with a ball",
-            config={"duration": 5},
-            progress_callback=progress_callback
         )
 
-        # Verify the client method was called with the progress callback
-        mock_client.generate_and_wait.assert_called_once_with(
+        # Verify the result
+        assert isinstance(result, VideoResult)
+        assert result.duration_seconds == 8.0  # Veo 3.1 generates 8-second videos
+
+        # Verify the client was called
+        mock_client.generate_and_download.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_generate_video_with_negative_prompt(video_service):
+    """Test generate_video passes negative_prompt correctly."""
+    with patch.object(video_service, '_get_deepinfra_client') as mock_get_client:
+
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_get_client.return_value = mock_client
+
+        # Mock the generate_and_download response
+        mock_job_response = DeepInfraJobResponse(
+            status="ok",
+            videos=["https://example.com/video.mp4"],
+            request_id="req-12345",
+        )
+        video_data = b"fake video content"
+        mock_client.generate_and_download.return_value = (mock_job_response, video_data)
+
+        # Call the method with negative_prompt in config
+        result = await video_service.generate_video(
             prompt="A cat playing with a ball",
-            config={"duration": 5},
-            audio_url=None,
-            progress_callback=progress_callback,
+            config={
+                "resolution": "720p",
+                "negative_prompt": "blurry, low quality",
+            },
         )
 
-        # Verify the callback was actually passed to the client
-        args, kwargs = mock_client.generate_and_wait.call_args
-        assert kwargs.get('progress_callback') == progress_callback
+        # Verify the client was called with negative_prompt
+        mock_client.generate_and_download.assert_called_once()
+        call_args = mock_client.generate_and_download.call_args
+        assert call_args.kwargs["negative_prompt"] == "blurry, low quality"
+
+
+@pytest.mark.asyncio
+async def test_generate_extended_video(video_service):
+    """Test generate_extended_video returns 8-second video (Veo 3.1 limit)."""
+    with patch.object(video_service, '_get_deepinfra_client') as mock_get_client:
+
+        # Setup mocks
+        mock_client = AsyncMock()
+        mock_get_client.return_value = mock_client
+
+        # Mock the generate_and_download response
+        mock_job_response = DeepInfraJobResponse(
+            status="ok",
+            videos=["https://example.com/video.mp4"],
+            request_id="req-12345",
+        )
+        video_data = b"fake video content"
+        mock_client.generate_and_download.return_value = (mock_job_response, video_data)
+
+        # Call generate_extended_video
+        result = await video_service.generate_extended_video(
+            prompt="A hand picks up a product",
+            opening_frame_url="https://example.com/frame.jpg",
+            target_duration=18,  # Requested 18 seconds
+        )
+
+        # Verify the result - should be 8 seconds (Veo 3.1 limit)
+        assert isinstance(result, VideoResult)
+        assert result.duration_seconds == 8.0
+
+
+@pytest.mark.asyncio
+async def test_map_config_aspect_ratio(video_service):
+    """Test _map_config handles aspect ratio correctly."""
+    # Valid aspect ratios
+    config = video_service._map_config({"aspect_ratio": "16:9"})
+    assert config["aspect_ratio"] == "16:9"
+
+    config = video_service._map_config({"aspect_ratio": "9:16"})
+    assert config["aspect_ratio"] == "9:16"
+
+    # Invalid aspect ratio defaults to 9:16
+    config = video_service._map_config({"aspect_ratio": "4:3"})
+    assert config["aspect_ratio"] == "9:16"
+
+
+@pytest.mark.asyncio
+async def test_map_config_resolution(video_service):
+    """Test _map_config handles resolution correctly."""
+    # Valid resolutions
+    config = video_service._map_config({"resolution": "720p"})
+    assert config["resolution"] == "720p"
+
+    config = video_service._map_config({"resolution": "1080p"})
+    assert config["resolution"] == "1080p"
+
+    # Invalid resolution defaults to 720p
+    config = video_service._map_config({"resolution": "480p"})
+    assert config["resolution"] == "720p"
+
+
+@pytest.mark.asyncio
+async def test_close_client(video_service):
+    """Test close properly cleans up the client."""
+    with patch.object(video_service, '_get_deepinfra_client') as mock_get_client:
+        # Setup mock client
+        mock_client = AsyncMock()
+        mock_get_client.return_value = mock_client
+
+        # First, get the client to initialize it
+        video_service._deepinfra_client = mock_client
+
+        # Close the service
+        await video_service.close()
+
+        # Verify client was closed
+        mock_client.close.assert_called_once()
+        assert video_service._deepinfra_client is None
