@@ -11,11 +11,17 @@ export interface RegenerateJobRequest {
   adjustments: JobAdjustments;
 }
 
+// Response types
+interface JobListResponse {
+  jobs: Job[];
+  count: number;
+}
+
 // Job API functions
 export const getJobs = async (status?: string): Promise<Job[]> => {
   const params = status ? { status } : {};
-  const response = await apiClient.get<Job[]>('/jobs', { params });
-  return response.data;
+  const response = await apiClient.get<JobListResponse>('/jobs', { params });
+  return response.data.jobs;
 };
 
 export const getJob = async (jobId: string): Promise<Job> => {
