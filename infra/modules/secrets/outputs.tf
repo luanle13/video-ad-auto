@@ -13,11 +13,17 @@ output "kling_secret_arn" {
   value       = aws_secretsmanager_secret.kling.arn
 }
 
+output "deepinfra_secret_arn" {
+  description = "ARN of the DeepInfra API key secret"
+  value       = aws_secretsmanager_secret.deepinfra.arn
+}
+
 output "secret_arns" {
   description = "List of all secret ARNs"
   value = [
     aws_secretsmanager_secret.openai.arn,
     aws_secretsmanager_secret.elevenlabs.arn,
     aws_secretsmanager_secret.kling.arn,
+    aws_secretsmanager_secret.deepinfra.arn,
   ]
 }

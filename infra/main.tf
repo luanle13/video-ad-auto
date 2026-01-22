@@ -236,7 +236,8 @@ module "lambda_video" {
 
   environment_variables = {
     # API Keys (from Secrets Manager)
-    KLING_API_KEY_SECRET = module.secrets.kling_secret_arn
+    KLING_API_KEY_SECRET   = module.secrets.kling_secret_arn
+    SECRETS_DEEPINFRA_KEY  = module.secrets.deepinfra_secret_arn
 
     # Storage configuration
     S3_IMAGES_BUCKET = module.s3.images_bucket_name
@@ -528,7 +529,8 @@ resource "aws_iam_role_policy" "video_lambda_secrets" {
           "secretsmanager:GetSecretValue"
         ]
         Resource = [
-          module.secrets.kling_secret_arn
+          module.secrets.kling_secret_arn,
+          module.secrets.deepinfra_secret_arn
         ]
       }
     ]

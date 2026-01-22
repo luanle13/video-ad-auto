@@ -38,3 +38,15 @@ resource "aws_secretsmanager_secret" "kling" {
 
   # Secret value will be populated manually after deployment
 }
+
+resource "aws_secretsmanager_secret" "deepinfra" {
+  name = "${var.name_prefix}/deepinfra-api-key"
+
+  description = "DeepInfra API key for Veo 3.1 video generation"
+
+  tags = {
+    Name    = "${var.name_prefix}-deepinfra-api-key"
+    Module  = "secrets"
+    Service = "deepinfra"
+  }
+}
