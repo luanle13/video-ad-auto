@@ -10,10 +10,10 @@ class SceneDescription(BaseModel):
     """A single scene in the video script."""
 
     scene_number: int
-    duration_seconds: int = Field(..., ge=1, le=20)
+    duration_seconds: int = Field(..., ge=2, le=10)
     visual_description: str = Field(..., description="What appears on screen")
-    voiceover_text: str = Field(..., description="Narration for this scene")
-    text_overlay: str | None = Field(None, description="On-screen text/caption")
+    text_overlay: str | None = Field(None, description="On-screen text/caption for silent video")
+    motion_description: str = Field(default="", description="Camera movement and product animation")
     transition: str = Field(default="cut", description="Transition to next scene")
 
 
@@ -34,10 +34,10 @@ class ScriptGeneratorInput(AgentInput):
     content_angles: list[str]
     trending_formats: list[str]
     platform_tips: dict[str, str]
-    suggested_music_style: str
+    suggested_music_style: str = ""  # Kept for background music consideration
 
-    # User preferences
-    target_duration: int = Field(default=45, ge=30, le=60, description="Target video duration in seconds")
+    # User preferences - updated for 15-20s videos
+    target_duration: int = Field(default=18, ge=15, le=20, description="Target video duration in seconds (15-20)")
     tone: str | None = Field(None, description="e.g., 'energetic', 'calm', 'professional'")
     emphasis: str | None = Field(None, description="Feature to emphasize")
 
@@ -46,22 +46,26 @@ class ScriptGeneratorOutput(AgentOutput):
     """Output from Script Generator Agent."""
 
     # Main script components
-    hook: str = Field(..., description="Opening hook (first 3 seconds)")
+    hook: str = Field(..., description="Opening visual hook (first 3 seconds)")
     scenes: list[dict[str, Any]] = Field(default_factory=list, description="Scene-by-scene breakdown")
-    call_to_action: str = Field(..., description="Closing CTA")
+    call_to_action: str = Field(..., description="Closing CTA text overlay")
 
-    # Full text versions
-    full_voiceover_text: str = Field(..., description="Complete voiceover script")
+    # Full text versions - updated for silent videos
     full_visual_description: str = Field(..., description="Complete visual direction")
+    text_overlay_sequence: list[str] = Field(default_factory=list, description="Sequence of text overlays")
 
-    # Metadata
-    estimated_duration_seconds: int = Field(..., ge=30, le=60)
-    scene_count: int = Field(..., ge=3, le=10)
+    # Metadata - updated for 15-20s
+    estimated_duration_seconds: int = Field(..., ge=15, le=20)
+    scene_count: int = Field(..., ge=3, le=6)
 
+    # Video generation guidance
+    opening_frame_description: str = Field(default="", description="Description for opening frame image")
+    closing_frame_description: str = Field(default="", description="Description for closing frame image")
+    
     # Suggested elements
     suggested_hashtags: list[str] = Field(default_factory=list)
     suggested_music_mood: str = ""
-    text_overlays: list[str] = Field(default_factory=list)
+    motion_style: str = Field(default="smooth", description="Overall motion style: smooth, dynamic, slow-motion")
 
 
 class ScriptGeneratorAgent(BaseAgent):
@@ -141,7 +145,7 @@ You must respond with valid JSON using the following structure:
 
         tone_instruction = ""
         if input_data.tone:
-            tone_instruction = f"\nTONE: Make the script {input_data.tone}."
+            tone_instruction = f"\nVISUAL TONE: {input_data.tone} - reflect this in motion and pacing."
 
         emphasis_instruction = ""
         if input_data.emphasis:
@@ -152,22 +156,24 @@ You must respond with valid JSON using the following structure:
             tips = "\n".join(f"• {platform}: {tip}" for platform, tip in input_data.platform_tips.items())
             platform_tips = f"\nPLATFORM TIPS:\n{tips}"
 
-        return f"""Create a {input_data.target_duration}-second video script for this product:
+        return f"""Create a {input_data.target_duration}-second SILENT video script for this kitchen product:
+
+REMINDER: This is a SILENT video (no voiceover). Use TEXT OVERLAYS and VISUALS only.
 
 PRODUCT: {input_data.product_title}
 PRICE: {input_data.price} ({input_data.price_positioning})
 TARGET AUDIENCE: {input_data.target_audience}
 
-KEY FEATURES:
+KEY FEATURES (show these visually):
 {features_text}
 
-UNIQUE SELLING POINTS:
+UNIQUE SELLING POINTS (demonstrate these):
 {usps_text}
 
 VISUAL ELEMENTS (from product images):
 {visuals_text}
 
-SUGGESTED HOOKS:
+SUGGESTED VISUAL HOOKS:
 {hooks_text}
 
 CONTENT ANGLES TO CONSIDER:
@@ -175,12 +181,13 @@ CONTENT ANGLES TO CONSIDER:
 
 TRENDING FORMATS: {formats_text}
 
-MUSIC STYLE: {input_data.suggested_music_style}
+BACKGROUND MUSIC STYLE: {input_data.suggested_music_style}
 {platform_tips}
 {tone_instruction}
 {emphasis_instruction}
 
-Create a compelling script that will stop scrollers and drive engagement. The script should feel natural and authentic, not salesy."""
+Create a compelling VISUAL script that showcases this kitchen product. 
+Remember: NO voiceover, NO faces, ONLY visual storytelling with text overlays."""
 
     def parse_response(self, response_text: str, input_data: ScriptGeneratorInput) -> ScriptGeneratorOutput:
         """Parse LLM response into structured output."""
@@ -192,27 +199,38 @@ Create a compelling script that will stop scrollers and drive engagement. The sc
         total_duration = 0
 
         for scene in scenes:
-            duration = scene.get("duration_seconds", 5)
+            duration = scene.get("duration_seconds", 4)
             total_duration += duration
             processed_scenes.append({
                 "scene_number": scene.get("scene_number", len(processed_scenes) + 1),
                 "duration_seconds": duration,
                 "visual_description": scene.get("visual_description", ""),
-                "voiceover_text": scene.get("voiceover_text", ""),
                 "text_overlay": scene.get("text_overlay"),
+                "motion_description": scene.get("motion_description", ""),
                 "transition": scene.get("transition", "cut"),
             })
+
+        # Collect text overlays from scenes
+        text_overlay_sequence = data.get("text_overlay_sequence", [])
+        if not text_overlay_sequence:
+            text_overlay_sequence = [
+                scene.get("text_overlay")
+                for scene in processed_scenes
+                if scene.get("text_overlay")
+            ]
 
         return ScriptGeneratorOutput(
             success=True,
             hook=data.get("hook", ""),
             scenes=processed_scenes,
             call_to_action=data.get("call_to_action", ""),
-            full_voiceover_text=data.get("full_voiceover_text", ""),
             full_visual_description=data.get("full_visual_description", ""),
-            estimated_duration_seconds=data.get("estimated_duration_seconds", total_duration),
+            text_overlay_sequence=text_overlay_sequence,
+            estimated_duration_seconds=min(20, max(15, data.get("estimated_duration_seconds", total_duration))),
             scene_count=len(processed_scenes),
+            opening_frame_description=data.get("opening_frame_description", ""),
+            closing_frame_description=data.get("closing_frame_description", ""),
             suggested_hashtags=data.get("suggested_hashtags", [])[:10],
             suggested_music_mood=data.get("suggested_music_mood", ""),
-            text_overlays=data.get("text_overlays", []),
+            motion_style=data.get("motion_style", "smooth"),
         )

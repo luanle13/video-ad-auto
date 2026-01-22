@@ -1,0 +1,69 @@
+{
+  "product": "ProBlend 3000 High-Performance Blender",
+  "target_duration": 18,
+  "tone": "energetic",
+  "hook": "Watch ice disappear in 3 seconds.",
+  "scenes": [
+    {
+      "scene_number": 1,
+      "duration_seconds": 3,
+      "visual_description": "POV: Hand pours a cup of ice cubes into the clear pitcher. Extreme close-up of ice hitting the bottom, pitcher on sleek stainless base. Fingers press the LED power button.",
+      "text_overlay": "Crushes ice instantly",
+      "motion_description": "",
+      "transition": "quick cut"
+    },
+    {
+      "scene_number": 2,
+      "duration_seconds": 3,
+      "visual_description": "Top-down: Blades spin. Ice transforms to smooth texture in seconds. Pitcher vibrates gently\u2014no face, just hands steadying.",
+      "text_overlay": "1800W Power \u2022 6 Blades",
+      "motion_description": "",
+      "transition": "smash zoom"
+    },
+    {
+      "scene_number": 3,
+      "duration_seconds": 3,
+      "visual_description": "POV: Hand adds spinach, fruit, and almond milk into pitcher. Measurement markings visible. LED speed dial turns smoothly.",
+      "text_overlay": "Healthy mornings, made easy",
+      "motion_description": "",
+      "transition": "swipe left"
+    },
+    {
+      "scene_number": 4,
+      "duration_seconds": 3,
+      "visual_description": "Over-the-shoulder: Silky smoothie pours into glass. Another hand gently wipes countertop\u2014no messy splashes.",
+      "text_overlay": "Smooth results. Zero mess.",
+      "motion_description": "",
+      "transition": "jump cut"
+    },
+    {
+      "scene_number": 5,
+      "duration_seconds": 3,
+      "visual_description": "Side-by-side: Blender running next to sleeping baby monitor (screen shows 'Zzz'), hands adjusting speed\u2014whisper-quiet.",
+      "text_overlay": "Whisper-quiet blending",
+      "motion_description": "",
+      "transition": "fade"
+    },
+    {
+      "scene_number": 6,
+      "duration_seconds": 3,
+      "visual_description": "POV: Hand presses self-clean button. Close-up: pitcher rinses itself, parts placed in dishwasher rack.",
+      "text_overlay": "Self-clean & dishwasher-safe",
+      "motion_description": "",
+      "transition": "swipe up"
+    }
+  ],
+  "call_to_action": "Upgrade your kitchen. Tap to shop ProBlend 3000.",
+  "opening_frame_description": "",
+  "closing_frame_description": "",
+  "suggested_hashtags": [
+    "#KitchenUpgrade",
+    "#SmoothieLife"
+  ],
+  "suggested_music_mood": "upbeat electronic, energetic",
+  "motion_style": "smooth",
+  "full_visual_description": "Quick POV shots and close-ups: hands pour ice, spin blades, add ingredients, and operate controls on the ProBlend 3000. Show ice crushing, smooth blending, silent operation (baby monitor), self-clean function, and easy dishwasher cleanup. Sleek stainless steel finish and LED panel featured. No faces, only hands and arms interacting with product. Fast-paced, energetic edits.",
+  "scene_count": 6,
+  "estimated_duration_seconds": 18,
+  "generated_at": "20260123_003116"
+}

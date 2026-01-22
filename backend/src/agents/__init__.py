@@ -6,6 +6,11 @@ from src.agents.base import (
     BaseAgent,
 )
 from src.agents.handler import handler
+from src.agents.image_generator import (
+    ImageGeneratorAgent,
+    ImageGeneratorInput,
+    ImageGeneratorOutput,
+)
 from src.agents.market_insight import (
     MarketInsightAgent,
     MarketInsightInput,
@@ -44,6 +49,10 @@ __all__ = [
     # Lambda handler
     "handler",
     "agent_handler",
+    # Image Generator (for base/closing frames)
+    "ImageGeneratorAgent",
+    "ImageGeneratorInput",
+    "ImageGeneratorOutput",
     # Market Insight
     "MarketInsightAgent",
     "MarketInsightInput",

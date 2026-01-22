@@ -1,0 +1,90 @@
+{
+  "product": "ProBlend 3000 High-Performance Blender",
+  "total_duration": 18,
+  "split_strategy": {
+    "video_1_duration": 9,
+    "video_2_duration": 9,
+    "combine_method": "Veo3 extend feature"
+  },
+  "video_1": {
+    "start_image": "opening_frame_20260123_003141.png",
+    "end_image": "bridge_frame_20260123_003141.png",
+    "duration_seconds": 9,
+    "prompt": "A fast-paced, photorealistic kitchen sequence. Start with a POV shot as a hand pours ice cubes into the ProBlend 3000\u2019s clear pitcher, the ice clattering onto the stainless steel base. Extreme close-up as the LED power button is pressed, illuminating the control panel. Cut to a top-down view: the six stainless steel blades spin powerfully, pulverizing ice into a smooth texture in seconds, while hands steady the gently vibrating pitcher. Transition to a POV as hands add fresh spinach, colorful fruit, and almond milk into the pitcher, with measurement markings visible. Fingers rotate the glowing LED speed dial, ready to blend. All scenes are set in a modern, bright kitchen with a clean, aspirational feel. No faces, only hands and arms interacting with the product.",
+    "scenes": [
+      {
+        "scene_number": 1,
+        "duration": 3,
+        "visual": "POV: Hand pours a cup of ice cubes into the clear pitcher. Extreme close-up of ice hitting the bottom, pitcher on sleek stainless base. Fingers press the LED power button.",
+        "text_overlay": "Crushes ice instantly",
+        "motion": ""
+      },
+      {
+        "scene_number": 2,
+        "duration": 3,
+        "visual": "Top-down: Blades spin. Ice transforms to smooth texture in seconds. Pitcher vibrates gently\u2014no face, just hands steadying.",
+        "text_overlay": "1800W Power \u2022 6 Blades",
+        "motion": ""
+      },
+      {
+        "scene_number": 3,
+        "duration": 3,
+        "visual": "POV: Hand adds spinach, fruit, and almond milk into pitcher. Measurement markings visible. LED speed dial turns smoothly.",
+        "text_overlay": "Healthy mornings, made easy",
+        "motion": ""
+      }
+    ]
+  },
+  "video_2": {
+    "start_image": "bridge_frame_20260123_003141.png",
+    "duration_seconds": 9,
+    "prompt": "Continue seamlessly from the bridge frame: Over-the-shoulder shot as the ProBlend 3000 pours a silky smoothie into a clear glass, hands steadying both pitcher and glass. Another hand gently wipes the spotless countertop, emphasizing no messy splashes. Cut to a side-by-side shot: the blender runs quietly next to a baby monitor showing a sleeping baby with 'Zzz' on screen, hands adjusting speed\u2014demonstrating whisper-quiet operation. POV as a hand presses the self-clean button; close-up of the pitcher rinsing itself with swirling water. Final shot: cleaned blender parts are placed neatly in a dishwasher rack. End with the product hero shot and the call to action: 'Upgrade your kitchen. Tap to shop ProBlend 3000.'",
+    "extend_from": "video_1",
+    "scenes": [
+      {
+        "scene_number": 4,
+        "duration": 3,
+        "visual": "Over-the-shoulder: Silky smoothie pours into glass. Another hand gently wipes countertop\u2014no messy splashes.",
+        "text_overlay": "Smooth results. Zero mess.",
+        "motion": ""
+      },
+      {
+        "scene_number": 5,
+        "duration": 3,
+        "visual": "Side-by-side: Blender running next to sleeping baby monitor (screen shows 'Zzz'), hands adjusting speed\u2014whisper-quiet.",
+        "text_overlay": "Whisper-quiet blending",
+        "motion": ""
+      },
+      {
+        "scene_number": 6,
+        "duration": 3,
+        "visual": "POV: Hand presses self-clean button. Close-up: pitcher rinses itself, parts placed in dishwasher rack.",
+        "text_overlay": "Self-clean & dishwasher-safe",
+        "motion": ""
+      }
+    ]
+  },
+  "bridge_scene": {
+    "description": "The bridge frame represents the precise moment when all smoothie ingredients are added to the ProBlend 3000\u2019s pitcher, and the user is about to start blending by turning the LED speed dial. It\u2019s a natural transition from ingredient prep to the blending action, visually connecting the setup with the blending and serving steps that follow.",
+    "image": "bridge_frame_20260123_003141.png",
+    "purpose": "End of video 1 / Starting point for video 2 extend"
+  },
+  "style_description": "The visual style is photorealistic, modern, and premium, suitable for a mid-range appliance commercial. Lighting is bright and professional, with soft daylight and subtle highlights on stainless steel and glass surfaces. The color palette is dominated by silver, black, and white accents, with pops of natural color from fresh ingredients. All backgrounds are clean and uncluttered, with minimalist cabinetry and subtle kitchen elements in soft focus to keep attention on the blender. Camera angles alternate between POV, close-up, and over-the-shoulder for dynamic, energetic storytelling. No human faces are ever shown\u2014only hands and arms in action.",
+  "visual_continuity_notes": "Maintain consistent lighting, camera perspective, and kitchen background throughout both halves. The ProBlend 3000 should always be positioned on the same spot on the countertop, with the same LED panel glow and stainless steel reflections. Ingredient colors and arrangement in the pitcher must match exactly between end of video 1 and start of video 2. Hands should appear from similar angles, and all interactions should be natural and fluid. Any props (glass, baby monitor, dish rack) should remain consistent in style and placement. Ensure smooth visual transition at the bridge frame by freezing the action mid-pour and mid-dial turn.",
+  "motion_suggestions": [
+    "Smooth POV camera movements following hands as they interact with the blender",
+    "Quick close-up cuts for ice pouring and blade spinning",
+    "Subtle camera shake to convey blender vibration during blending",
+    "Top-down rotation to showcase ingredient transformation",
+    "Seamless cross-dissolve or quick cut at the bridge frame for split",
+    "Slow-motion moment as smoothie pours into glass",
+    "Gentle camera pan to reveal baby monitor and quiet operation",
+    "Macro close-up of self-clean action with swirling water"
+  ],
+  "negative_prompt": "human faces, people, portraits, blurry, distorted, low quality, watermark, text",
+  "veo3_config": {
+    "aspect_ratio": "16:9",
+    "extend_mode": true
+  },
+  "generated_at": "20260123_003141"
+}

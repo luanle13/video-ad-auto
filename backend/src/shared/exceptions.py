@@ -163,6 +163,20 @@ class KlingError(ExternalServiceError):
         super().__init__("Kling", message)
 
 
+class PiAPIError(ExternalServiceError):
+    """PiAPI video generation error."""
+    
+    def __init__(self, message: str) -> None:
+        super().__init__("PiAPI", message)
+
+
+class AzureImageError(ExternalServiceError):
+    """Azure DALL-E image generation error."""
+    
+    def __init__(self, message: str) -> None:
+        super().__init__("AzureImage", message)
+
+
 class ElevenLabsError(ExternalServiceError):
     """ElevenLabs API error."""
 
