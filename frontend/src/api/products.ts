@@ -5,7 +5,7 @@ import { Product } from '@/types';
 export interface CreateProductRequest {
   title: string;
   description: string;
-  price: number;
+  price: string;  // Price as string e.g., "99.99"
   image_keys: string[];
 }
 

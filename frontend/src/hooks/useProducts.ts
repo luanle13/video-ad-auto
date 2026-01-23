@@ -4,7 +4,8 @@ import {
   getProduct as getProductApi,
   createProduct as createProductApi,
   deleteProduct as deleteProductApi,
-  CreateProductRequest
+  getUploadUrl,
+  uploadImage,
 } from '@/api/products';
 import { Product } from '@/types';
 
@@ -23,11 +24,41 @@ export const useProduct = (id: string) => {
   });
 };
 
+// Input type for product creation from the form
+interface CreateProductInput {
+  title: string;
+  description: string;
+  price: number;
+  images: File[];
+}
+
 export const useCreateProduct = () => {
   const queryClient = useQueryClient();
-  
+
   return useMutation({
-    mutationFn: (data: CreateProductRequest) => createProductApi(data),
+    mutationFn: async (data: CreateProductInput): Promise<Product> => {
+      // Step 1: Upload all images to S3
+      const imageKeys: string[] = [];
+
+      for (const file of data.images) {
+        // Get presigned URL for this image
+        const uploadData = await getUploadUrl(file.name, file.type);
+
+        // Upload the file to S3
+        await uploadImage(uploadData.url, uploadData.fields, file);
+
+        // Store the S3 key
+        imageKeys.push(uploadData.key);
+      }
+
+      // Step 2: Create the product with S3 keys
+      return createProductApi({
+        title: data.title,
+        description: data.description,
+        price: data.price.toString(), // Convert number to string
+        image_keys: imageKeys,
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
