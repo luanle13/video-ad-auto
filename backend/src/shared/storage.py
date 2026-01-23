@@ -166,11 +166,16 @@ class S3Client:
         response = self._s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
         return [obj["Key"] for obj in response.get("Contents", [])]
     
-    def generate_image_key(self, user_id: str, product_id: str, filename: str) -> str:
-        """Generate a unique key for a product image."""
+    def generate_image_key(self, user_id: str, filename: str, product_id: str | None = None) -> str:
+        """Generate a unique key for a product image.
+
+        If product_id is not provided, images are stored in a 'pending' folder
+        for uploads before product creation.
+        """
         from uuid import uuid4
         ext = filename.rsplit(".", 1)[-1] if "." in filename else "jpg"
-        return f"{user_id}/{product_id}/{uuid4()}.{ext}"
+        folder = product_id if product_id else "pending"
+        return f"{user_id}/{folder}/{uuid4()}.{ext}"
     
     def generate_video_key(self, user_id: str, job_id: str) -> str:
         """Generate a key for a generated video."""

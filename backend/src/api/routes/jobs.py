@@ -103,6 +103,7 @@ async def create_job(
             name=f"job-{job['job_id']}",
             input=json.dumps(execution_input, default=str),
         )
+        print('response from sfnclient: {response}')
         logger.info(
             "step_function_started",
             job_id=job["job_id"],

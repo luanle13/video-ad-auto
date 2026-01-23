@@ -1,8 +1,9 @@
 """Authentication dependencies."""
-import time
+import ssl
 from typing import Annotated
 
 import boto3
+import certifi
 import jwt
 from botocore.exceptions import ClientError
 from fastapi import Depends, Header
@@ -29,7 +30,10 @@ class CognitoAuth:
         self._region = settings.cognito_region
         self._issuer = f"https://cognito-idp.{self._region}.amazonaws.com/{self._user_pool_id}"
         self._jwks_url = f"{self._issuer}/.well-known/jwks.json"
-        self._jwks_client = PyJWKClient(self._jwks_url, cache_keys=True)
+
+        # Create SSL context with certifi's CA bundle for macOS compatibility
+        ssl_context = ssl.create_default_context(cafile=certifi.where())
+        self._jwks_client = PyJWKClient(self._jwks_url, cache_keys=True, ssl_context=ssl_context)
         self._cognito_client = boto3.client("cognito-idp", region_name=self._region)
     
     def validate_token(self, token: str) -> dict:
