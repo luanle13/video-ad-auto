@@ -1,4 +1,6 @@
 """Video Lambda handler for Step Functions workflow."""
+import asyncio
+from decimal import Decimal
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -11,6 +13,17 @@ from src.workers.services.video_service import get_video_service
 
 
 logger = get_logger(__name__)
+
+
+def _convert_floats_to_decimal(obj: Any) -> Any:
+    """Recursively convert floats to Decimal for DynamoDB compatibility."""
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    elif isinstance(obj, dict):
+        return {k: _convert_floats_to_decimal(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_convert_floats_to_decimal(item) for item in obj]
+    return obj
 
 
 class VideoHandlerInput(BaseModel):
@@ -51,8 +64,13 @@ class VideoHandlerOutput(BaseModel):
     error: str | None = Field(None, description="Error message if failed")
 
 
-async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    """Lambda handler for video generation in Step Functions workflow.
+def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Sync wrapper for async video handler."""
+    return asyncio.run(_async_handler(event, context))
+
+
+async def _async_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Async Lambda handler for video generation in Step Functions workflow.
 
     Args:
         event: Step Functions event containing VideoHandlerInput
@@ -152,18 +170,23 @@ async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
             "job_response": result.job_response.model_dump(),  # Store job response data
         }
 
+        # Convert floats to Decimal for DynamoDB compatibility
+        step_output_db = _convert_floats_to_decimal(step_output)
+
         db.update_job_step_output(
             user_id=input_data.user_id,
             job_id=input_data.job_id,
             step_name="video",
-            output=step_output,
+            output=step_output_db,
         )
 
-        # Update job status to COMPLETE
-        db.update_job_status(
+        # Update job with video/audio keys and set status to COMPLETE
+        # This sets top-level video_key and audio_key fields for the API
+        db.update_job_video(
             user_id=input_data.user_id,
             job_id=input_data.job_id,
-            status=JobStatus.COMPLETE.value,
+            video_key=video_key,
+            audio_key=input_data.audio_s3_key or "",
         )
 
         logger.info(

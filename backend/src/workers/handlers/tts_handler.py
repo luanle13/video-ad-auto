@@ -1,4 +1,5 @@
 """TTS Lambda handler for Step Functions workflow."""
+import asyncio
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -59,7 +60,12 @@ class TTSHandlerOutput(BaseModel):
     error: str | None = Field(None, description="Error message if failed")
 
 
-async def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
+    """Sync wrapper for async TTS handler."""
+    return asyncio.run(_async_handler(event, context))
+
+
+async def _async_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
     """Lambda handler for TTS generation in Step Functions workflow.
 
     Args:

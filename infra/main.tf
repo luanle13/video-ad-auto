@@ -146,8 +146,13 @@ module "lambda_api" {
     COGNITO_CLIENT_ID    = module.cognito.app_client_id
     COGNITO_REGION       = var.aws_region
 
-    # Step Functions configuration (will be set via SSM)
-    STEP_FUNCTIONS_STATE_MACHINE_ARN = module.stepfunctions.state_machine_arn
+    # Step Functions configuration
+    STEPFUNCTIONS_STATE_MACHINE_ARN = module.stepfunctions.state_machine_arn
+
+    # Lambda ARNs for Step Functions workflow
+    LAMBDA_AGENTS_ARN = module.lambda_agents.function_arn
+    LAMBDA_TTS_ARN    = module.lambda_tts.function_arn
+    LAMBDA_VIDEO_ARN  = module.lambda_video.function_arn
 
     # Frontend URL for CORS
     FRONTEND_URL = "https://${module.cloudfront.distribution_domain}"
@@ -157,7 +162,7 @@ module "lambda_api" {
     PROJECT_NAME = var.project_name
   }
 
-  depends_on = [aws_ecr_repository.lambda, module.cloudfront]
+  depends_on = [aws_ecr_repository.lambda, module.cloudfront, module.lambda_agents, module.lambda_tts, module.lambda_video]
 }
 
 # Agents Lambda function module
@@ -177,6 +182,11 @@ module "lambda_agents" {
     OPENAI_MODEL              = var.openai_model
     KLING_API_KEY_SECRET      = module.secrets.kling_secret_arn
     ELEVENLABS_API_KEY_SECRET = module.secrets.elevenlabs_secret_arn
+
+    # Azure OpenAI Configuration
+    AZURE_OPENAI_API_KEY       = var.azure_openai_api_key
+    AZURE_OPENAI_ENDPOINT      = var.azure_openai_endpoint
+    AZURE_GPT_DEPLOYMENT_NAME  = var.azure_gpt_deployment_name
 
     # Database configuration
     DYNAMODB_USERS_TABLE    = module.dynamodb.users_table_name
@@ -238,6 +248,9 @@ module "lambda_video" {
     # API Keys (from Secrets Manager)
     KLING_API_KEY_SECRET   = module.secrets.kling_secret_arn
     SECRETS_DEEPINFRA_KEY  = module.secrets.deepinfra_secret_arn
+
+    # Database configuration
+    DYNAMODB_JOBS_TABLE = module.dynamodb.jobs_table_name
 
     # Storage configuration
     S3_IMAGES_BUCKET = module.s3.images_bucket_name
@@ -531,6 +544,50 @@ resource "aws_iam_role_policy" "video_lambda_secrets" {
         Resource = [
           module.secrets.kling_secret_arn,
           module.secrets.deepinfra_secret_arn
+        ]
+      }
+    ]
+  })
+}
+
+# TTS Lambda - DynamoDB permissions
+resource "aws_iam_role_policy" "tts_lambda_dynamodb" {
+  name = "${local.name_prefix}-tts-lambda-dynamodb-policy"
+  role = module.lambda_tts.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem"
+        ]
+        Resource = [
+          module.dynamodb.jobs_table_arn
+        ]
+      }
+    ]
+  })
+}
+
+# Video Lambda - DynamoDB permissions
+resource "aws_iam_role_policy" "video_lambda_dynamodb" {
+  name = "${local.name_prefix}-video-lambda-dynamodb-policy"
+  role = module.lambda_video.role_name
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "dynamodb:GetItem",
+          "dynamodb:UpdateItem"
+        ]
+        Resource = [
+          module.dynamodb.jobs_table_arn
         ]
       }
     ]

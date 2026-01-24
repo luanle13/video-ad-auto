@@ -72,7 +72,11 @@ resource "aws_sfn_state_machine" "main" {
   name     = "${var.name_prefix}-video-pipeline"
   role_arn = aws_iam_role.state_machine_role.arn
 
-  definition = file("${path.module}/definition.json")
+  definition = templatefile("${path.module}/definition.json.tpl", {
+    agent_lambda_arn = var.agent_lambda_arn
+    tts_lambda_arn   = var.tts_lambda_arn
+    video_lambda_arn = var.video_lambda_arn
+  })
 
   tags = {
     Name        = "${var.name_prefix}-video-pipeline"

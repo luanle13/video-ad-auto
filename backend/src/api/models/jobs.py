@@ -18,6 +18,7 @@ class JobStatus(str, Enum):
     PROCESSING = "PROCESSING"
     ANALYZING = "ANALYZING"
     SCRIPTING = "SCRIPTING"
+    PROMPTING = "PROMPTING"
     GENERATING_TTS = "GENERATING_TTS"
     GENERATING_VIDEO = "GENERATING_VIDEO"
     COMPLETE = "COMPLETE"
@@ -44,7 +45,7 @@ class JobAdjustments(BaseModel):
     )
     duration_preference: int | None = Field(
         None,
-        ge=30,
+        ge=10,
         le=60,
         description="Target duration in seconds",
     )

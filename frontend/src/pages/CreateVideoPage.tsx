@@ -15,7 +15,7 @@ const CreateVideoPage: React.FC = () => {
     background_style: '',
     tone: '',
     emphasis: '',
-    duration_preference: 30,
+    duration_preference: 20,
     additional_instructions: '',
   });
   
@@ -191,7 +191,7 @@ const CreateVideoPage: React.FC = () => {
             <div className="flex items-center space-x-4">
               <input
                 type="range"
-                min="15"
+                min="10"
                 max="60"
                 value={adjustments.duration_preference}
                 onChange={(e) => handleAdjustmentChange('duration_preference', parseInt(e.target.value))}

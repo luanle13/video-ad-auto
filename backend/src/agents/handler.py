@@ -1,10 +1,12 @@
 """Lambda handler for agent execution in Step Functions."""
 
 import json
+from decimal import Decimal
 from typing import Any
 
 from src.agents.market_insight import MarketInsightAgent, MarketInsightInput
 from src.agents.product_analyzer import ProductAnalyzerAgent, ProductAnalyzerInput
+from src.agents.prompt_producer import PromptProducerAgent, PromptProducerInput
 from src.agents.script_generator import ScriptGeneratorAgent, ScriptGeneratorInput
 from src.agents.script_optimizer import ScriptOptimizerAgent, ScriptOptimizerInput
 from src.agents.script_reviewer import ScriptReviewerAgent, ScriptReviewerInput
@@ -14,6 +16,17 @@ from src.shared.logging import configure_logging, get_logger
 configure_logging()
 logger = get_logger(__name__)
 
+
+def _convert_floats_to_decimal(obj: Any) -> Any:
+    """Recursively convert floats to Decimal for DynamoDB compatibility."""
+    if isinstance(obj, float):
+        return Decimal(str(obj))
+    elif isinstance(obj, dict):
+        return {k: _convert_floats_to_decimal(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [_convert_floats_to_decimal(item) for item in obj]
+    return obj
+
 # Agent registry mapping task names to (AgentClass, InputClass)
 AGENTS = {
     "analyze": (ProductAnalyzerAgent, ProductAnalyzerInput),
@@ -21,6 +34,7 @@ AGENTS = {
     "generate": (ScriptGeneratorAgent, ScriptGeneratorInput),
     "optimize": (ScriptOptimizerAgent, ScriptOptimizerInput),
     "review": (ScriptReviewerAgent, ScriptReviewerInput),
+    "prompt": (PromptProducerAgent, PromptProducerInput),
 }
 
 # Status mapping for each task
@@ -30,6 +44,7 @@ STATUS_MAP = {
     "generate": "SCRIPTING",
     "optimize": "SCRIPTING",
     "review": "SCRIPTING",
+    "prompt": "PROMPTING",
 }
 
 
@@ -97,9 +112,10 @@ def handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
         agent = agent_class()
         output = agent.run(input_data, context)
 
-        # Store output in job
+        # Store output in job (convert floats to Decimal for DynamoDB)
         output_dict = output.model_dump()
-        db.update_job_step_output(user_id, job_id, task, output_dict)
+        output_dict_db = _convert_floats_to_decimal(output_dict)
+        db.update_job_step_output(user_id, job_id, task, output_dict_db)
         logger.info(
             "agent_completed",
             task=task,
@@ -192,7 +208,7 @@ def _build_input(task: str, event: dict[str, Any], input_class: type) -> Any:
             platform_tips=market_insight.get("platform_tips", {}),
             suggested_music_style=market_insight.get("suggested_music_style", ""),
             # User preferences
-            target_duration=adjustments.get("target_duration", 45),
+            target_duration=adjustments.get("target_duration", 20),
             tone=adjustments.get("tone"),
             emphasis=adjustments.get("emphasis"),
         )
@@ -238,6 +254,19 @@ def _build_input(task: str, event: dict[str, Any], input_class: type) -> Any:
             # Review parameters
             target_platform=adjustments.get("primary_platform", "tiktok"),
             brand_voice=adjustments.get("brand_voice"),
+        )
+
+    elif task == "prompt":
+        # Prompt producer input - fields passed directly from Step Functions
+        return input_class(
+            **base,
+            hook=event.get("hook", ""),
+            scenes=event.get("scenes", []),
+            call_to_action=event.get("call_to_action", ""),
+            full_voiceover_text=event.get("full_voiceover_text", ""),
+            product_title=event.get("product_title", ""),
+            visual_elements=event.get("visual_elements", []),
+            target_duration=adjustments.get("target_duration", 20),
         )
 
     else:

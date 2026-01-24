@@ -47,6 +47,11 @@ class Settings(BaseSettings):
     
     # Step Functions
     stepfunctions_state_machine_arn: str = ""
+
+    # Lambda ARNs (for Step Functions workflow)
+    lambda_agents_arn: str = ""
+    lambda_tts_arn: str = ""
+    lambda_video_arn: str = ""
     
     # Secrets Manager keys (ARN or name)
     secrets_openai_key: str = "ai-video/openai-api-key"

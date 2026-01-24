@@ -1,5 +1,5 @@
 import { Job, JobStatus } from '@/types';
-import { CheckCircle, Clock, Loader, Play, Mic, Video } from 'lucide-react';
+import { CheckCircle, Clock, Loader, Play, Mic, Video, FileText } from 'lucide-react';
 
 interface JobProgressProps {
   job: Job;
@@ -10,6 +10,7 @@ export const JobProgress: React.FC<JobProgressProps> = ({ job }) => {
     { status: JobStatus.PENDING, label: 'Queued', icon: Clock },
     { status: JobStatus.ANALYZING, label: 'Analyzing Product', icon: Clock },
     { status: JobStatus.SCRIPTING, label: 'Generating Script', icon: Play },
+    { status: JobStatus.PROMPTING, label: 'Creating Prompts', icon: FileText },
     { status: JobStatus.GENERATING_TTS, label: 'Generating Audio', icon: Mic },
     { status: JobStatus.GENERATING_VIDEO, label: 'Generating Video', icon: Video },
     { status: JobStatus.COMPLETE, label: 'Complete', icon: CheckCircle },
@@ -24,18 +25,20 @@ export const JobProgress: React.FC<JobProgressProps> = ({ job }) => {
         return 1;
       case JobStatus.SCRIPTING:
         return 2;
-      case JobStatus.GENERATING_TTS:
+      case JobStatus.PROMPTING:
         return 3;
-      case JobStatus.GENERATING_VIDEO:
+      case JobStatus.GENERATING_TTS:
         return 4;
-      case JobStatus.COMPLETE:
+      case JobStatus.GENERATING_VIDEO:
         return 5;
+      case JobStatus.COMPLETE:
+        return 6;
       case JobStatus.FAILED:
         // For failed jobs, show the step where it failed
         // This would require tracking the last successful step
-        return steps.findIndex(s => s.status === job.status) !== -1 
-          ? steps.findIndex(s => s.status === job.status) 
-          : 5; // Default to complete if not found
+        return steps.findIndex(s => s.status === job.status) !== -1
+          ? steps.findIndex(s => s.status === job.status)
+          : 6; // Default to complete if not found
       default:
         return 0;
     }
@@ -63,10 +66,11 @@ export const JobProgress: React.FC<JobProgressProps> = ({ job }) => {
           IconComponent = CheckCircle;
           iconClass += ' text-success-500';
         } else if (isCurrent) {
-          if (job.status === JobStatus.PROCESSING || 
-              job.status === JobStatus.ANALYZING || 
-              job.status === JobStatus.SCRIPTING || 
-              job.status === JobStatus.GENERATING_TTS || 
+          if (job.status === JobStatus.PROCESSING ||
+              job.status === JobStatus.ANALYZING ||
+              job.status === JobStatus.SCRIPTING ||
+              job.status === JobStatus.PROMPTING ||
+              job.status === JobStatus.GENERATING_TTS ||
               job.status === JobStatus.GENERATING_VIDEO) {
             IconComponent = Loader;
             iconClass += ' text-primary-500 animate-spin';

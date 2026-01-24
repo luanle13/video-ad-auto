@@ -31,17 +31,19 @@ const VideoPreviewPage: React.FC = () => {
     background_style: '',
     tone: '',
     emphasis: '',
-    duration_preference: 30,
+    duration_preference: 20,
     additional_instructions: '',
   });
 
   // Poll for job updates when in processing states
   useEffect(() => {
-    if (job && 
-        (job.status === JobStatus.PROCESSING || 
-         job.status === JobStatus.ANALYZING || 
-         job.status === JobStatus.SCRIPTING || 
-         job.status === JobStatus.GENERATING_TTS || 
+    if (job &&
+        (job.status === JobStatus.PENDING ||
+         job.status === JobStatus.PROCESSING ||
+         job.status === JobStatus.ANALYZING ||
+         job.status === JobStatus.SCRIPTING ||
+         job.status === JobStatus.PROMPTING ||
+         job.status === JobStatus.GENERATING_TTS ||
          job.status === JobStatus.GENERATING_VIDEO)) {
       const interval = setInterval(() => {
         refetch();

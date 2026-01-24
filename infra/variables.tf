@@ -70,3 +70,23 @@ variable "openai_model" {
   type        = string
   default     = "gpt-4o"
 }
+
+# Azure OpenAI Configuration
+variable "azure_openai_api_key" {
+  description = "Azure OpenAI API key"
+  type        = string
+  sensitive   = true
+  default     = ""
+}
+
+variable "azure_openai_endpoint" {
+  description = "Azure OpenAI endpoint URL"
+  type        = string
+  default     = ""
+}
+
+variable "azure_gpt_deployment_name" {
+  description = "Azure OpenAI GPT model deployment name"
+  type        = string
+  default     = "gpt-4o"
+}

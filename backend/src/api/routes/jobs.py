@@ -95,6 +95,10 @@ async def create_job(
             "image_keys": product["image_keys"],
         },
         "adjustments": job["adjustments"],
+        # Lambda ARNs required by Step Functions workflow
+        "agent_lambda_arn": settings.lambda_agents_arn,
+        "tts_lambda_arn": settings.lambda_tts_arn,
+        "video_lambda_arn": settings.lambda_video_arn,
     }
 
     try:
@@ -103,7 +107,6 @@ async def create_job(
             name=f"job-{job['job_id']}",
             input=json.dumps(execution_input, default=str),
         )
-        print('response from sfnclient: {response}')
         logger.info(
             "step_function_started",
             job_id=job["job_id"],
@@ -229,6 +232,10 @@ async def regenerate_job(
         },
         "adjustments": merged_adjustments,
         "regeneration_of": job_id,
+        # Lambda ARNs required by Step Functions workflow
+        "agent_lambda_arn": settings.lambda_agents_arn,
+        "tts_lambda_arn": settings.lambda_tts_arn,
+        "video_lambda_arn": settings.lambda_video_arn,
     }
 
     try:

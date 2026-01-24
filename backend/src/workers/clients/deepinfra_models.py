@@ -115,7 +115,7 @@ class DeepInfraInferenceStatus(BaseModel):
     """
 
     status: str = Field(
-        ...,
+        default="succeeded",
         description="Status of the inference",
     )
     runtime_ms: int = Field(

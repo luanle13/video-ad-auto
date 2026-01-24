@@ -31,7 +31,7 @@ class PromptProducerInput(AgentInput):
     full_voiceover_text: str = Field(description="Complete voiceover script")
     product_title: str = Field(description="Product name")
     visual_elements: list[str] = Field(default_factory=list, description="Visual elements")
-    target_duration: int = Field(default=45, ge=30, le=60, description="Target duration")
+    target_duration: int = Field(default=20, ge=10, le=60, description="Target duration")
 
 
 class PromptProducerOutput(AgentOutput):

@@ -36,8 +36,8 @@ class ScriptGeneratorInput(AgentInput):
     platform_tips: dict[str, str]
     suggested_music_style: str = ""  # Kept for background music consideration
 
-    # User preferences - updated for 15-20s videos
-    target_duration: int = Field(default=18, ge=15, le=20, description="Target video duration in seconds (15-20)")
+    # User preferences
+    target_duration: int = Field(default=20, ge=10, le=60, description="Target video duration in seconds")
     tone: str | None = Field(None, description="e.g., 'energetic', 'calm', 'professional'")
     emphasis: str | None = Field(None, description="Feature to emphasize")
 
