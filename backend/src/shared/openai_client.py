@@ -84,25 +84,45 @@ _openai_client: OpenAIClientWrapper | None = None
 
 def get_openai_client() -> OpenAIClientWrapper:
     """Get Azure OpenAI client singleton.
-    
+
     Returns:
         OpenAIClientWrapper instance.
     """
     global _openai_client
     if _openai_client is None:
+        from src.shared.secrets import get_secrets
+
         settings = get_settings()
-        
-        # Get Azure OpenAI credentials from environment
-        api_key = settings.azure_openai_api_key
         endpoint = settings.azure_openai_endpoint
-        
-        if not api_key or not endpoint:
+
+        if not endpoint:
             raise ValueError(
-                "Azure OpenAI not configured. Set AZURE_OPENAI_API_KEY and AZURE_OPENAI_ENDPOINT"
+                "Azure OpenAI not configured. Set AZURE_OPENAI_ENDPOINT"
             )
-        
+
+        # Try to get API key from Secrets Manager first, then fall back to env var
+        api_key = None
+        if settings.secrets_azure_openai_key:
+            try:
+                secrets = get_secrets()
+                secret_data = secrets.get_secret_json(settings.secrets_azure_openai_key)
+                api_key = secret_data.get("api_key")
+                logger.info("azure_openai_key_from_secrets_manager")
+            except Exception as e:
+                logger.warning("failed_to_get_azure_key_from_secrets", error=str(e))
+
+        # Fall back to environment variable
+        if not api_key and settings.azure_openai_api_key:
+            api_key = settings.azure_openai_api_key.get_secret_value() if hasattr(settings.azure_openai_api_key, 'get_secret_value') else str(settings.azure_openai_api_key)
+            logger.info("azure_openai_key_from_env")
+
+        if not api_key:
+            raise ValueError(
+                "Azure OpenAI API key not found. Set it in Secrets Manager or AZURE_OPENAI_API_KEY env var"
+            )
+
         _openai_client = OpenAIClientWrapper(
-            api_key=api_key.get_secret_value() if hasattr(api_key, 'get_secret_value') else str(api_key),
+            api_key=api_key,
             endpoint=endpoint,
             deployment_name=settings.azure_gpt_deployment_name,
         )

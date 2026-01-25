@@ -50,3 +50,15 @@ resource "aws_secretsmanager_secret" "deepinfra" {
     Service = "deepinfra"
   }
 }
+
+resource "aws_secretsmanager_secret" "azure_openai" {
+  name = "${var.name_prefix}/azure-openai-api-key"
+
+  description = "Azure OpenAI API key for GPT-4 agents"
+
+  tags = {
+    Name    = "${var.name_prefix}-azure-openai-api-key"
+    Module  = "secrets"
+    Service = "azure-openai"
+  }
+}

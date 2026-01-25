@@ -18,6 +18,11 @@ output "deepinfra_secret_arn" {
   value       = aws_secretsmanager_secret.deepinfra.arn
 }
 
+output "azure_openai_secret_arn" {
+  description = "ARN of the Azure OpenAI API key secret"
+  value       = aws_secretsmanager_secret.azure_openai.arn
+}
+
 output "secret_arns" {
   description = "List of all secret ARNs"
   value = [
@@ -25,5 +30,6 @@ output "secret_arns" {
     aws_secretsmanager_secret.elevenlabs.arn,
     aws_secretsmanager_secret.kling.arn,
     aws_secretsmanager_secret.deepinfra.arn,
+    aws_secretsmanager_secret.azure_openai.arn,
   ]
 }

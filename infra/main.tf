@@ -183,8 +183,8 @@ module "lambda_agents" {
     KLING_API_KEY_SECRET      = module.secrets.kling_secret_arn
     ELEVENLABS_API_KEY_SECRET = module.secrets.elevenlabs_secret_arn
 
-    # Azure OpenAI Configuration
-    AZURE_OPENAI_API_KEY       = var.azure_openai_api_key
+    # Azure OpenAI Configuration (key from Secrets Manager)
+    SECRETS_AZURE_OPENAI_KEY   = module.secrets.azure_openai_secret_arn
     AZURE_OPENAI_ENDPOINT      = var.azure_openai_endpoint
     AZURE_GPT_DEPLOYMENT_NAME  = var.azure_gpt_deployment_name
 
@@ -437,7 +437,8 @@ resource "aws_iam_role_policy" "agents_lambda_secrets" {
         Resource = [
           module.secrets.openai_secret_arn,
           module.secrets.kling_secret_arn,
-          module.secrets.elevenlabs_secret_arn
+          module.secrets.elevenlabs_secret_arn,
+          module.secrets.azure_openai_secret_arn
         ]
       }
     ]

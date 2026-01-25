@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     secrets_piapi_key: str = "ai-video/piapi-api-key"
     secrets_azure_image_key: str = "ai-video/azure-image-api-key"
     secrets_deepinfra_key: str = "ai-video/deepinfra-api-key"
+    secrets_azure_openai_key: str = "ai-video/azure-openai-api-key"
 
     # OpenAI Configuration (Azure OpenAI)
     openai_model: str = "gpt-4o"
